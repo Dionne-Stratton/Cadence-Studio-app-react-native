@@ -8,6 +8,8 @@ import {
   FlatList,
   TextInput,
   Alert,
+  Switch,
+  ScrollView,
 } from 'react-native';
 import useStore from '../store';
 import { BlockType, BlockMode, getBlockTimingSummary } from '../types';
@@ -15,6 +17,7 @@ import { generateId } from '../utils/id';
 
 export default function AddBlockModal({ visible, onClose, onAddBlock }) {
   const blockTemplates = useStore((state) => state.blockTemplates);
+  const addBlockTemplate = useStore((state) => state.addBlockTemplate);
   const [tab, setTab] = useState('library'); // 'library' or 'custom'
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState(null);
@@ -27,6 +30,7 @@ export default function AddBlockModal({ visible, onClose, onAddBlock }) {
   const [customSeconds, setCustomSeconds] = useState(30);
   const [customReps, setCustomReps] = useState(10);
   const [customPerRepSeconds, setCustomPerRepSeconds] = useState(5);
+  const [saveToLibrary, setSaveToLibrary] = useState(false);
 
   const filteredTemplates = blockTemplates.filter((template) => {
     const matchesSearch =
@@ -54,7 +58,7 @@ export default function AddBlockModal({ visible, onClose, onAddBlock }) {
     onClose();
   };
 
-  const handleAddCustom = () => {
+  const handleAddCustom = async () => {
     if (!customLabel.trim()) {
       Alert.alert('Validation Error', 'Please enter a name for this block.');
       return;
@@ -80,9 +84,28 @@ export default function AddBlockModal({ visible, onClose, onAddBlock }) {
       }
     }
 
+    let templateId = null;
+    
+    // If save to library is checked, save the block as a template first
+    if (saveToLibrary) {
+      const template = {
+        label: customLabel.trim(),
+        type: customType,
+        mode: customMode,
+        ...(customMode === BlockMode.DURATION
+          ? { durationSeconds }
+          : {
+              reps: customReps,
+              perRepSeconds: customPerRepSeconds,
+            }),
+      };
+      const savedTemplate = await addBlockTemplate(template);
+      templateId = savedTemplate.id;
+    }
+
     const blockInstance = {
       id: generateId(),
-      templateId: null, // Custom block, not from library
+      templateId: templateId, // Will be null if not saved to library
       label: customLabel.trim(),
       type: customType,
       mode: customMode,
@@ -104,6 +127,7 @@ export default function AddBlockModal({ visible, onClose, onAddBlock }) {
     setCustomSeconds(30);
     setCustomReps(10);
     setCustomPerRepSeconds(5);
+    setSaveToLibrary(false);
     
     onClose();
   };
@@ -237,7 +261,10 @@ export default function AddBlockModal({ visible, onClose, onAddBlock }) {
             />
           </View>
         ) : (
-          <View style={styles.customContent}>
+          <ScrollView 
+            style={styles.customContentScroll} 
+            contentContainerStyle={styles.customContent}
+          >
             <Text style={styles.label}>Name *</Text>
             <TextInput
               style={styles.input}
@@ -362,13 +389,29 @@ export default function AddBlockModal({ visible, onClose, onAddBlock }) {
               </>
             )}
 
+            {/* Save to Library Toggle */}
+            <View style={styles.saveToLibraryContainer}>
+              <View style={styles.saveToLibraryContent}>
+                <Text style={styles.saveToLibraryLabel}>Save to Library</Text>
+                <Text style={styles.saveToLibraryDescription}>
+                  Save this block to your activity library for future use
+                </Text>
+              </View>
+              <Switch
+                value={saveToLibrary}
+                onValueChange={setSaveToLibrary}
+                trackColor={{ false: '#ddd', true: '#6200ee' }}
+                thumbColor="#fff"
+              />
+            </View>
+
             <TouchableOpacity
               style={styles.addButton}
               onPress={handleAddCustom}
             >
               <Text style={styles.addButtonText}>Add to Session</Text>
             </TouchableOpacity>
-          </View>
+          </ScrollView>
         )}
       </View>
     </Modal>
@@ -492,9 +535,38 @@ const styles = StyleSheet.create({
     color: '#6200ee',
     fontWeight: '500',
   },
-  customContent: {
+  customContentScroll: {
     flex: 1,
+  },
+  customContent: {
     padding: 16,
+  },
+  saveToLibraryContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginTop: 24,
+    marginBottom: 16,
+  },
+  saveToLibraryContent: {
+    flex: 1,
+    marginRight: 12,
+  },
+  saveToLibraryLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  saveToLibraryDescription: {
+    fontSize: 14,
+    color: '#666',
   },
   label: {
     fontSize: 16,

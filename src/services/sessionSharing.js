@@ -101,13 +101,61 @@ export const sessionSharingService = {
         copyToCacheDirectory: true,
       });
 
-      if (result.type === 'cancel') {
+      if (!result || result.type === 'cancel' || result.canceled) {
         return null;
       }
 
-      // Read file (default encoding is UTF-8)
-      const fileUri = result.uri;
-      const fileContent = await FileSystem.readAsStringAsync(fileUri);
+      // Get file URI - handle both old and new API formats
+      let fileUri = null;
+      
+      // New API format: result.assets is an array (expo-document-picker >= 11.0)
+      // The URI is in result.assets[0].uri
+      if (result.assets && Array.isArray(result.assets) && result.assets.length > 0) {
+        fileUri = result.assets[0].uri;
+      }
+      // Old API format: result.uri exists directly (expo-document-picker < 11.0)
+      else if (result.uri) {
+        fileUri = result.uri;
+      }
+      // Alternative locations for fallback
+      else if (result.fileUri) {
+        fileUri = result.fileUri;
+      }
+      else if (result.file && result.file.uri) {
+        fileUri = result.file.uri;
+      }
+
+      // Validate that we have a file URI
+      if (!fileUri || typeof fileUri !== 'string') {
+        console.error('DocumentPicker result:', JSON.stringify(result, null, 2));
+        Alert.alert('Error', 'Failed to access selected file. The file URI was not provided.');
+        return null;
+      }
+
+      // Verify file exists before reading
+      let fileInfo;
+      try {
+        fileInfo = await FileSystem.getInfoAsync(fileUri);
+      } catch (infoError) {
+        console.error('Error checking file info:', infoError);
+        // Continue anyway - getInfoAsync might not be available on all platforms
+        fileInfo = { exists: true };
+      }
+
+      if (fileInfo && !fileInfo.exists) {
+        Alert.alert('Error', 'Selected file could not be found. Please try again.');
+        return null;
+      }
+
+      // Read file content
+      let fileContent;
+      try {
+        fileContent = await FileSystem.readAsStringAsync(fileUri);
+      } catch (readError) {
+        console.error('Error reading file:', readError);
+        console.error('File URI:', fileUri);
+        throw new Error(`Failed to read file: ${readError.message || 'Unknown error'}`);
+      }
 
       // Parse JSON
       let session;

@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   FlatList,
   ScrollView,
+  Alert,
 } from 'react-native';
 import useStore from '../store';
 import {
@@ -18,6 +19,7 @@ import {
 export default function SessionPreviewScreen({ navigation, route }) {
   const { sessionId } = route.params || {};
   const sessionTemplates = useStore((state) => state.sessionTemplates);
+  const deleteSessionTemplate = useStore((state) => state.deleteSessionTemplate);
   const session = sessionTemplates.find((s) => s.id === sessionId);
 
   if (!session) {
@@ -108,6 +110,28 @@ export default function SessionPreviewScreen({ navigation, route }) {
           onPress={() => navigation.navigate('SessionBuilder', { sessionId })}
         >
           <Text style={[styles.actionButtonText, styles.editButtonText]}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.deleteButton]}
+          onPress={() => {
+            Alert.alert(
+              'Delete Session',
+              `Are you sure you want to delete "${session.name}"?`,
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete',
+                  style: 'destructive',
+                  onPress: async () => {
+                    await deleteSessionTemplate(sessionId);
+                    navigation.goBack();
+                  },
+                },
+              ]
+            );
+          }}
+        >
+          <Text style={[styles.actionButtonText, styles.deleteButtonText]}>Delete</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.actionButton, styles.playButton]}
@@ -274,6 +298,14 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     color: '#6200ee',
+  },
+  deleteButton: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ff5252',
+  },
+  deleteButtonText: {
+    color: '#ff5252',
   },
   playButton: {
     backgroundColor: '#6200ee',
