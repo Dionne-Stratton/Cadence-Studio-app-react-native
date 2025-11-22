@@ -5,6 +5,7 @@ const STORAGE_KEYS = {
   BLOCK_TEMPLATES: '@timer_app:block_templates',
   SESSION_TEMPLATES: '@timer_app:session_templates',
   SETTINGS: '@timer_app:settings',
+  SESSION_HISTORY: '@timer_app:session_history',
 };
 
 /**
@@ -16,6 +17,7 @@ const DEFAULT_SETTINGS = {
   enableSounds: true,
   enableVibration: true,
   keepScreenAwakeDuringSession: true,
+  historyRetention: 'unlimited',
 };
 
 /**
@@ -91,6 +93,30 @@ export const storageService = {
       return true;
     } catch (error) {
       console.error('Error saving settings:', error);
+      return false;
+    }
+  },
+
+  // Session History
+  async loadSessionHistory() {
+    try {
+      const data = await AsyncStorage.getItem(STORAGE_KEYS.SESSION_HISTORY);
+      return data ? JSON.parse(data) : [];
+    } catch (error) {
+      console.error('Error loading session history:', error);
+      return [];
+    }
+  },
+
+  async saveSessionHistory(history) {
+    try {
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.SESSION_HISTORY,
+        JSON.stringify(history)
+      );
+      return true;
+    } catch (error) {
+      console.error('Error saving session history:', error);
       return false;
     }
   },

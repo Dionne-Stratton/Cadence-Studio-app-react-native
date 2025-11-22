@@ -8,10 +8,12 @@ import {
   Alert,
   ScrollView,
   FlatList,
+  Switch,
 } from 'react-native';
 import useStore from '../store';
 import { BlockType, getBlockTimingSummary, getSessionTotalDuration, formatTime } from '../types';
 import { generateId } from '../utils/id';
+import { getISOWeekday } from '../utils/history';
 import AddBlockModal from '../components/AddBlockModal';
 
 export default function SessionBuilderScreen({ navigation, route }) {
@@ -33,7 +35,29 @@ export default function SessionBuilderScreen({ navigation, route }) {
   const [items, setItems] = useState(
     existingSession?.items ? [...existingSession.items] : []
   );
+  const [scheduledDaysOfWeek, setScheduledDaysOfWeek] = useState(
+    existingSession?.scheduledDaysOfWeek || []
+  );
   const [showAddModal, setShowAddModal] = useState(false);
+
+  // Day names for display (ISO: 1=Monday ... 7=Sunday)
+  const weekdays = [
+    { value: 1, label: 'Mon' },
+    { value: 2, label: 'Tue' },
+    { value: 3, label: 'Wed' },
+    { value: 4, label: 'Thu' },
+    { value: 5, label: 'Fri' },
+    { value: 6, label: 'Sat' },
+    { value: 7, label: 'Sun' },
+  ];
+
+  const toggleDay = (dayValue) => {
+    if (scheduledDaysOfWeek.includes(dayValue)) {
+      setScheduledDaysOfWeek(scheduledDaysOfWeek.filter(d => d !== dayValue));
+    } else {
+      setScheduledDaysOfWeek([...scheduledDaysOfWeek, dayValue].sort());
+    }
+  };
 
   useEffect(() => {
     navigation.setOptions({
@@ -64,11 +88,13 @@ export default function SessionBuilderScreen({ navigation, route }) {
         await updateSessionTemplate(sessionId, {
           name: sessionName.trim(),
           items,
+          scheduledDaysOfWeek: scheduledDaysOfWeek.length > 0 ? scheduledDaysOfWeek : undefined,
         });
       } else {
         await addSessionTemplate({
           name: sessionName.trim(),
           items,
+          scheduledDaysOfWeek: scheduledDaysOfWeek.length > 0 ? scheduledDaysOfWeek : undefined,
         });
       }
       navigation.goBack();
@@ -224,6 +250,44 @@ export default function SessionBuilderScreen({ navigation, route }) {
           />
         </View>
 
+        {/* Scheduled Days */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Schedule (Optional)</Text>
+          <Text style={styles.description}>
+            Select days of the week when this session should appear in Quick Start
+          </Text>
+          <View style={styles.daysContainer}>
+            {weekdays.map((day) => {
+              const isSelected = scheduledDaysOfWeek.includes(day.value);
+              return (
+                <TouchableOpacity
+                  key={day.value}
+                  style={[
+                    styles.dayButton,
+                    isSelected && styles.dayButtonActive,
+                  ]}
+                  onPress={() => toggleDay(day.value)}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.dayButtonText,
+                      isSelected && styles.dayButtonTextActive,
+                    ]}
+                  >
+                    {day.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {scheduledDaysOfWeek.length > 0 && (
+            <Text style={styles.scheduledHint}>
+              Scheduled for {scheduledDaysOfWeek.map(d => weekdays.find(w => w.value === d)?.label).join(', ')}
+            </Text>
+          )}
+        </View>
+
         {/* Summary */}
         <View style={styles.summaryContainer}>
           <View style={styles.summaryItem}>
@@ -300,6 +364,12 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 8,
   },
+  description: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 12,
+    lineHeight: 20,
+  },
   input: {
     backgroundColor: '#f5f5f5',
     borderRadius: 8,
@@ -307,6 +377,39 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: '#ddd',
+  },
+  daysContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  dayButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dayButtonActive: {
+    backgroundColor: '#6200ee',
+    borderColor: '#6200ee',
+  },
+  dayButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  dayButtonTextActive: {
+    color: '#fff',
+  },
+  scheduledHint: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 8,
+    fontStyle: 'italic',
   },
   summaryContainer: {
     flexDirection: 'row',

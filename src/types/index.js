@@ -51,6 +51,7 @@ export const BlockMode = {
  * @property {string} name - Display name (e.g., "Leg Day A")
  * @property {BlockInstance[]} items - Ordered array of BlockInstances
  * @property {string[]} [tags] - Optional array of tags
+ * @property {number[]} [scheduledDaysOfWeek] - ISO weekday indices (1=Monday ... 7=Sunday)
  */
 
 /**
@@ -63,6 +64,19 @@ export const BlockMode = {
  * @property {boolean} enableSounds - Enable sound cues
  * @property {boolean} enableVibration - Enable haptic feedback
  * @property {boolean} keepScreenAwakeDuringSession - Keep screen awake during sessions
+ * @property {string} historyRetention - History retention setting ("unlimited" | "3months" | "6months" | "12months")
+ */
+
+/**
+ * SessionHistoryEntry - History log entry for completed sessions
+ */
+/**
+ * @typedef {Object} SessionHistoryEntry
+ * @property {string} id - Unique identifier
+ * @property {string|null} sessionId - ID of SessionTemplate that was run (null if deleted)
+ * @property {string} sessionName - Snapshot of session name at completion time
+ * @property {string} completedAt - ISO timestamp in UTC
+ * @property {number} totalDurationSeconds - Total duration in seconds (planned duration)
  */
 
 /**

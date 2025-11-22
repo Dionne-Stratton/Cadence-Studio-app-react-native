@@ -3,17 +3,242 @@ import {
   View,
   Text,
   StyleSheet,
+  ScrollView,
+  TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import useStore from '../store';
+import { getSessionTotalDuration, formatTime } from '../types';
+import {
+  getISOWeekday,
+  getDateDisplayString,
+  calculateCurrentStreak,
+  calculateLongestStreak,
+  getThisWeekHistory,
+} from '../utils/history';
 
-export default function HomeScreen({ navigation }) {
+export default function HomeScreen() {
+  const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
+  
+  const sessionTemplates = useStore((state) => state.sessionTemplates);
+  const sessionHistory = useStore((state) => state.sessionHistory);
+  
+  // Get today's ISO weekday (1=Monday ... 7=Sunday)
+  const todayWeekday = getISOWeekday(new Date());
+  
+  // Calculate streaks
+  const currentStreak = calculateCurrentStreak(sessionHistory);
+  const longestStreak = calculateLongestStreak(sessionHistory);
+  
+  // Get this week's history
+  const thisWeekHistory = getThisWeekHistory(sessionHistory);
+  const sessionsThisWeek = thisWeekHistory.length;
+  const minutesThisWeek = Math.round(
+    thisWeekHistory.reduce((sum, entry) => sum + entry.totalDurationSeconds, 0) / 60
+  );
+  
+  // Quick Start logic
+  const getQuickStartSession = () => {
+    // 1. Find sessions scheduled for today
+    const scheduledToday = sessionTemplates.filter(session => {
+      return session.scheduledDaysOfWeek && session.scheduledDaysOfWeek.includes(todayWeekday);
+    });
+    
+    // Scenario A: Exactly one scheduled session
+    if (scheduledToday.length === 1) {
+      return { session: scheduledToday[0], reason: 'scheduled' };
+    }
+    
+    // Scenario B: Multiple scheduled sessions
+    if (scheduledToday.length > 1) {
+      // Get today's history entries
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().split('T')[0];
+      
+      const todayHistory = sessionHistory.filter(entry => {
+        const entryDate = new Date(entry.completedAt).toISOString().split('T')[0];
+        return entryDate === todayStr;
+      });
+      
+      const completedSessionIds = new Set(todayHistory.map(h => h.sessionId).filter(Boolean));
+      
+      // Remove completed sessions
+      const uncompletedScheduled = scheduledToday.filter(s => !completedSessionIds.has(s.id));
+      
+      if (uncompletedScheduled.length > 0) {
+        // Choose deterministically (alphabetical by name)
+        uncompletedScheduled.sort((a, b) => a.name.localeCompare(b.name));
+        return { session: uncompletedScheduled[0], reason: 'scheduled' };
+      } else {
+        // All completed, choose deterministically
+        scheduledToday.sort((a, b) => a.name.localeCompare(b.name));
+        return { session: scheduledToday[0], reason: 'scheduled' };
+      }
+    }
+    
+    // Scenario C: No scheduled sessions - fall back to most recently completed
+    if (sessionHistory.length > 0) {
+      // Find most recent entry whose session still exists
+      for (const entry of sessionHistory) {
+        if (entry.sessionId) {
+          const session = sessionTemplates.find(s => s.id === entry.sessionId);
+          if (session) {
+            return { session, reason: 'lastUsed' };
+          }
+        }
+      }
+    }
+    
+    return null;
+  };
+  
+  const quickStartSession = getQuickStartSession();
+  
+  // Get recent activity (last 5 entries)
+  const recentActivity = sessionHistory
+    .slice()
+    .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))
+    .slice(0, 5);
+  
+  const handleQuickStart = () => {
+    if (!quickStartSession) return;
+    
+    // Switch to Sessions tab and navigate to RunSessionScreen
+    navigation.navigate('Sessions', {
+      screen: 'RunSession',
+      params: { sessionId: quickStartSession.session.id },
+    });
+  };
+  
+  const handleCreateSession = () => {
+    navigation.navigate('Sessions', {
+      screen: 'SessionBuilder',
+      params: { sessionId: null },
+    });
+  };
+  
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.content}>
-        <Text style={styles.placeholderText}>Home</Text>
-        <Text style={styles.subtitle}>Coming soon</Text>
-      </View>
-    </SafeAreaView>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Quick Start Card */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Quick Start</Text>
+          {quickStartSession ? (
+            <View>
+              <TouchableOpacity
+                style={styles.quickStartButton}
+                onPress={handleQuickStart}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.quickStartButtonText}>
+                  Quick start: {quickStartSession.session.name}
+                </Text>
+              </TouchableOpacity>
+              <Text style={styles.quickStartSubtext}>
+                {quickStartSession.reason === 'scheduled' 
+                  ? "Today's scheduled session" 
+                  : "Last used session"}
+              </Text>
+            </View>
+          ) : sessionTemplates.length === 0 ? (
+            <View>
+              <Text style={styles.emptyText}>
+                No sessions yet. Create one in the Sessions tab to get started.
+              </Text>
+              <TouchableOpacity
+                style={styles.createButton}
+                onPress={handleCreateSession}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.createButtonText}>Create a Session</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <Text style={styles.emptyText}>
+              No quick-start session available. Create and schedule a session to enable Quick Start.
+            </Text>
+          )}
+        </View>
+        
+        {/* Streaks Card */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Streaks</Text>
+          {sessionHistory.length === 0 ? (
+            <Text style={styles.emptyText}>
+              No sessions completed yet. Your streak will appear here once you finish your first session.
+            </Text>
+          ) : (
+            <View>
+              <View style={styles.streakRow}>
+                <Text style={styles.streakLabel}>Current streak:</Text>
+                <Text style={styles.streakValue}>{currentStreak} day{currentStreak !== 1 ? 's' : ''}</Text>
+              </View>
+              {currentStreak === 0 && (
+                <Text style={styles.streakHint}>Start today to begin a new streak.</Text>
+              )}
+              <View style={styles.streakRow}>
+                <Text style={styles.streakLabel}>Longest streak:</Text>
+                <Text style={styles.streakValue}>{longestStreak} day{longestStreak !== 1 ? 's' : ''}</Text>
+              </View>
+              <Text style={styles.cardSubtext}>A day counts if you complete at least one session.</Text>
+            </View>
+          )}
+        </View>
+        
+        {/* This Week Card */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>This Week</Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Sessions completed</Text>
+              <Text style={styles.statValue}>{sessionsThisWeek}</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Total time</Text>
+              <Text style={styles.statValue}>{minutesThisWeek} min</Text>
+            </View>
+          </View>
+          {sessionsThisWeek === 0 && (
+            <Text style={styles.cardSubtext}>Start a session to begin your week.</Text>
+          )}
+        </View>
+        
+        {/* Recent Activity Card */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Recent Activity</Text>
+          {recentActivity.length === 0 ? (
+            <Text style={styles.emptyText}>
+              No sessions completed yet. Your recent sessions will appear here after you finish one.
+            </Text>
+          ) : (
+            <View style={styles.activityList}>
+              {recentActivity.map((entry) => (
+                <View key={entry.id} style={styles.activityRow}>
+                  <Text style={styles.activityDate}>
+                    {getDateDisplayString(entry.completedAt)}
+                  </Text>
+                  <Text style={styles.activitySeparator}>·</Text>
+                  <Text style={styles.activityName} numberOfLines={1}>
+                    {entry.sessionName}
+                  </Text>
+                  <Text style={styles.activitySeparator}>·</Text>
+                  <Text style={styles.activityDuration}>
+                    {Math.round(entry.totalDurationSeconds / 60)} min
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -22,21 +247,136 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  content: {
+  scrollView: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
   },
-  placeholderText: {
-    fontSize: 32,
+  content: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  cardTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
+    marginBottom: 12,
+  },
+  cardSubtext: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 8,
+  },
+  quickStartButton: {
+    backgroundColor: '#6200ee',
+    borderRadius: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    alignItems: 'center',
     marginBottom: 8,
   },
-  subtitle: {
-    fontSize: 18,
+  quickStartButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  quickStartSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
+  createButton: {
+    backgroundColor: '#6200ee',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    marginTop: 12,
+    alignSelf: 'flex-start',
+  },
+  createButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+  },
+  streakRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  streakLabel: {
+    fontSize: 16,
     color: '#666',
   },
+  streakValue: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#6200ee',
+  },
+  streakHint: {
+    fontSize: 14,
+    color: '#999',
+    fontStyle: 'italic',
+    marginBottom: 8,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#6200ee',
+  },
+  activityList: {
+    gap: 12,
+  },
+  activityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  activityDate: {
+    fontSize: 14,
+    color: '#666',
+    minWidth: 60,
+  },
+  activitySeparator: {
+    fontSize: 14,
+    color: '#999',
+    marginHorizontal: 8,
+  },
+  activityName: {
+    flex: 1,
+    fontSize: 14,
+    color: '#333',
+  },
+  activityDuration: {
+    fontSize: 14,
+    color: '#6200ee',
+    fontWeight: '500',
+  },
 });
-

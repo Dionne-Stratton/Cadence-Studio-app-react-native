@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { storageService } from '../services/storage';
 import { generateId } from '../utils/id';
-import { BlockType, BlockMode } from '../types';
+import { BlockType, BlockMode, getSessionTotalDuration } from '../types';
 
 /**
  * Zustand store for global app state
@@ -11,12 +11,14 @@ const useStore = create((set, get) => ({
   // Initial state
   blockTemplates: [],
   sessionTemplates: [],
+  sessionHistory: [],
   settings: {
     preCountdownSeconds: 3,
     warningSecondsBeforeEnd: 10,
     enableSounds: true,
     enableVibration: true,
     keepScreenAwakeDuringSession: true,
+    historyRetention: 'unlimited',
   },
 
   // Running session state
@@ -31,16 +33,18 @@ const useStore = create((set, get) => ({
 
   // Initialize store - load data from storage
   initialize: async () => {
-    const [blockTemplates, sessionTemplates, settings] = await Promise.all([
+    const [blockTemplates, sessionTemplates, settings, sessionHistory] = await Promise.all([
       storageService.loadBlockTemplates(),
       storageService.loadSessionTemplates(),
       storageService.loadSettings(),
+      storageService.loadSessionHistory(),
     ]);
 
     set({
       blockTemplates,
       sessionTemplates,
       settings,
+      sessionHistory,
     });
   },
 
@@ -122,6 +126,71 @@ const useStore = create((set, get) => ({
     const updated = { ...get().settings, ...updates };
     set({ settings: updated });
     await storageService.saveSettings(updated);
+    
+    // If historyRetention changed, enforce it immediately
+    if (updates.historyRetention !== undefined) {
+      get().enforceHistoryRetention();
+    }
+  },
+
+  // History retention enforcement
+  enforceHistoryRetention: async () => {
+    const { sessionHistory, settings } = get();
+    if (settings.historyRetention === 'unlimited') {
+      return;
+    }
+
+    const now = new Date();
+    let cutoffDate;
+
+    switch (settings.historyRetention) {
+      case '3months':
+        cutoffDate = new Date(now);
+        cutoffDate.setMonth(now.getMonth() - 3);
+        break;
+      case '6months':
+        cutoffDate = new Date(now);
+        cutoffDate.setMonth(now.getMonth() - 6);
+        break;
+      case '12months':
+        cutoffDate = new Date(now);
+        cutoffDate.setMonth(now.getMonth() - 12);
+        break;
+      default:
+        return;
+    }
+
+    const cutoffTime = cutoffDate.getTime();
+    const filtered = sessionHistory.filter((entry) => {
+      const entryTime = new Date(entry.completedAt).getTime();
+      return entryTime >= cutoffTime;
+    });
+
+    if (filtered.length !== sessionHistory.length) {
+      set({ sessionHistory: filtered });
+      await storageService.saveSessionHistory(filtered);
+    }
+  },
+
+  // Session History actions
+  addSessionHistoryEntry: async (entry) => {
+    const newEntry = {
+      ...entry,
+      id: generateId(),
+    };
+    const updated = [...get().sessionHistory, newEntry];
+    set({ sessionHistory: updated });
+    await storageService.saveSessionHistory(updated);
+    
+    // Enforce retention after adding entry
+    await get().enforceHistoryRetention();
+    
+    return newEntry;
+  },
+
+  deleteAllHistory: async () => {
+    set({ sessionHistory: [] });
+    await storageService.saveSessionHistory([]);
   },
 
   // Running session actions
@@ -196,7 +265,20 @@ const useStore = create((set, get) => ({
           remainingSeconds: getBlockDuration(nextBlock),
         });
       } else {
-        // Session complete
+        // Session complete - create history entry
+        const { runningSession } = get();
+        if (runningSession) {
+          const totalDuration = getSessionTotalDuration(runningSession);
+          const now = new Date().toISOString(); // UTC timestamp
+          
+          get().addSessionHistoryEntry({
+            sessionId: runningSession.id,
+            sessionName: runningSession.name,
+            completedAt: now,
+            totalDurationSeconds: totalDuration,
+          });
+        }
+        
         set({
           isRunning: false,
           isSessionComplete: true,

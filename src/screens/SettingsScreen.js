@@ -19,6 +19,7 @@ export default function SettingsScreen({ navigation }) {
   const settings = useStore((state) => state.settings);
   const updateSettings = useStore((state) => state.updateSettings);
   const addSessionTemplate = useStore((state) => state.addSessionTemplate);
+  const deleteAllHistory = useStore((state) => state.deleteAllHistory);
   
   // Force recalculation when screen comes back into focus (after modal closes)
   useFocusEffect(
@@ -50,6 +51,28 @@ export default function SettingsScreen({ navigation }) {
       // No need to call initialize() - addSessionTemplate already saves and updates the store
       Alert.alert('Success', 'Session imported successfully!');
     }
+  };
+
+  const handleHistoryRetentionChange = (retention) => {
+    updateSettings({ historyRetention: retention });
+  };
+
+  const handleDeleteAllHistory = () => {
+    Alert.alert(
+      'Delete All History',
+      'This will permanently delete all session history, including streaks and statistics. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete All',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteAllHistory();
+            Alert.alert('Success', 'All history has been deleted.');
+          },
+        },
+      ]
+    );
   };
 
   const renderSettingSection = (title, children) => (
@@ -222,6 +245,41 @@ export default function SettingsScreen({ navigation }) {
           Import a session file (.bztimer) from your device storage
         </Text>
       </View>
+
+      {/* History Retention Section */}
+      {renderSettingSection('History Retention', (
+        <View>
+          {renderOptionSetting(
+            'Keep History For',
+            'Automatically delete history older than selected period',
+            [
+              { label: 'Unlimited', value: 'unlimited' },
+              { label: '3 months', value: '3months' },
+              { label: '6 months', value: '6months' },
+              { label: '12 months', value: '12months' },
+            ],
+            settings.historyRetention || 'unlimited',
+            handleHistoryRetentionChange
+          )}
+        </View>
+      ))}
+
+      {/* Delete History Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Manage History</Text>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.deleteButton]}
+          onPress={handleDeleteAllHistory}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.actionButtonText, styles.deleteButtonText]}>
+            Delete All History
+          </Text>
+        </TouchableOpacity>
+        <Text style={styles.actionDescription}>
+          Permanently delete all session history. This will reset your streaks and statistics.
+        </Text>
+      </View>
       </ScrollView>
     </View>
   );
@@ -347,5 +405,13 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     marginTop: 8,
+  },
+  deleteButton: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ff5252',
+  },
+  deleteButtonText: {
+    color: '#ff5252',
   },
 });

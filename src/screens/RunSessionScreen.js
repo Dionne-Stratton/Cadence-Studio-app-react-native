@@ -8,7 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import useStore from '../store';
 import {
   BlockType,
@@ -109,7 +109,7 @@ export default function RunSessionScreen({ navigation, route }) {
   // Keep screen awake during session
   useEffect(() => {
     if (runningSession && settings.keepScreenAwakeDuringSession) {
-      activateKeepAwake();
+      activateKeepAwakeAsync();
     } else {
       deactivateKeepAwake();
     }
