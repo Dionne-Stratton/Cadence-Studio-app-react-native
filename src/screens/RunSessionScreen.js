@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import { Ionicons } from '@expo/vector-icons';
 import useStore from '../store';
 import {
   BlockType,
@@ -415,9 +416,11 @@ export default function RunSessionScreen({ navigation, route }) {
           style={[styles.controlButton, styles.playPauseButton]}
           onPress={handleTogglePause}
         >
-          <Text style={styles.controlButtonText}>
-            {isRunning ? '⏸ Pause' : '▶ Play'}
-          </Text>
+          <Ionicons
+            name={isRunning ? 'pause' : 'play'}
+            size={24}
+            color="#fff"
+          />
         </TouchableOpacity>
 
         <TouchableOpacity

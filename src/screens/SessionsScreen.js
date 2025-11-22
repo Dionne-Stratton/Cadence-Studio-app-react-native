@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   Alert,
   RefreshControl,
+  Modal,
+  Platform,
+  ActionSheetIOS,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -23,6 +26,9 @@ export default function SessionsScreen({ navigation }) {
   const duplicateSessionTemplate = useStore((state) => state.duplicateSessionTemplate);
   const addSessionTemplate = useStore((state) => state.addSessionTemplate);
   const [refreshing, setRefreshing] = useState(false);
+  const [optionsModalVisible, setOptionsModalVisible] = useState(false);
+  const [selectedSessionId, setSelectedSessionId] = useState(null);
+  const [selectedSessionName, setSelectedSessionName] = useState(null);
   
   // Force recalculation when screen comes back into focus (after modal closes)
   useFocusEffect(
@@ -100,32 +106,51 @@ export default function SessionsScreen({ navigation }) {
   };
 
   const handleSessionOptions = (sessionId, sessionName) => {
-    const session = sessionTemplates.find((s) => s.id === sessionId);
-    
-    Alert.alert(
-      sessionName,
-      'Choose an action:',
-      [
-        { text: 'Cancel', style: 'cancel' },
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
         {
-          text: 'Edit',
-          onPress: () => handleEditSession(sessionId),
+          options: ['Cancel', 'Start', 'Edit', 'Share', 'Duplicate', 'Delete'],
+          destructiveButtonIndex: 5,
+          cancelButtonIndex: 0,
+          title: sessionName,
         },
-        {
-          text: 'Share',
-          onPress: () => handleShareSession(sessionId),
-        },
-        {
-          text: 'Duplicate',
-          onPress: () => handleDuplicateSession(sessionId),
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => handleDeleteSession(sessionId, sessionName),
-        },
-      ]
-    );
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            handleStartSession(sessionId);
+          } else if (buttonIndex === 2) {
+            handleEditSession(sessionId);
+          } else if (buttonIndex === 3) {
+            handleShareSession(sessionId);
+          } else if (buttonIndex === 4) {
+            handleDuplicateSession(sessionId);
+          } else if (buttonIndex === 5) {
+            handleDeleteSession(sessionId, sessionName);
+          }
+        }
+      );
+    } else {
+      // Android - use custom modal
+      setSelectedSessionId(sessionId);
+      setSelectedSessionName(sessionName);
+      setOptionsModalVisible(true);
+    }
+  };
+
+  const handleModalAction = (action) => {
+    setOptionsModalVisible(false);
+    if (!selectedSessionId) return;
+
+    if (action === 'start') {
+      handleStartSession(selectedSessionId);
+    } else if (action === 'edit') {
+      handleEditSession(selectedSessionId);
+    } else if (action === 'share') {
+      handleShareSession(selectedSessionId);
+    } else if (action === 'duplicate') {
+      handleDuplicateSession(selectedSessionId);
+    } else if (action === 'delete') {
+      handleDeleteSession(selectedSessionId, selectedSessionName);
+    }
   };
 
   const renderSessionItem = ({ item }) => {
@@ -183,6 +208,67 @@ export default function SessionsScreen({ navigation }) {
       >
         <Text style={styles.addButtonText}>+ New Session</Text>
       </TouchableOpacity>
+
+      {/* Options Modal for Android */}
+      <Modal
+        visible={optionsModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setOptionsModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setOptionsModalVisible(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            <Text style={styles.modalTitle}>{selectedSessionName}</Text>
+            <Text style={styles.modalSubtitle}>Choose an action:</Text>
+            
+            <TouchableOpacity
+              style={styles.modalOption}
+              onPress={() => handleModalAction('start')}
+            >
+              <Text style={styles.modalOptionText}>Start</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.modalOption}
+              onPress={() => handleModalAction('edit')}
+            >
+              <Text style={styles.modalOptionText}>Edit</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.modalOption}
+              onPress={() => handleModalAction('share')}
+            >
+              <Text style={styles.modalOptionText}>Share</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.modalOption}
+              onPress={() => handleModalAction('duplicate')}
+            >
+              <Text style={styles.modalOptionText}>Duplicate</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.modalOption, styles.modalOptionDelete]}
+              onPress={() => handleModalAction('delete')}
+            >
+              <Text style={[styles.modalOptionText, styles.modalOptionTextDelete]}>Delete</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.modalCancel}
+              onPress={() => setOptionsModalVisible(false)}
+            >
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -279,6 +365,57 @@ const styles = StyleSheet.create({
   addButtonText: {
     color: colors.textLight,
     fontSize: 16,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: 12,
+    width: '100%',
+    maxWidth: 400,
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 16,
+  },
+  modalOption: {
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderMedium,
+  },
+  modalOptionDelete: {
+    borderBottomWidth: 0,
+    marginTop: 8,
+  },
+  modalOptionText: {
+    fontSize: 16,
+    color: colors.text,
+  },
+  modalOptionTextDelete: {
+    color: colors.error,
+  },
+  modalCancel: {
+    marginTop: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: 16,
+    color: colors.textSecondary,
     fontWeight: '600',
   },
 });
