@@ -3,8 +3,9 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme';
 
 // Screens
 import HomeScreen from '../screens/HomeScreen';
@@ -21,13 +22,15 @@ const Stack = createNativeStackNavigator();
 
 // Stack navigator for Sessions tab
 function SessionsStack() {
+  const colors = useTheme();
+  
   return (
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: '#4A7C9E',
+          backgroundColor: colors.primary,
         },
-        headerTintColor: '#fff',
+        headerTintColor: colors.textLight,
         headerTitleStyle: {
           fontWeight: 'bold',
         },
@@ -63,6 +66,8 @@ function SessionsStack() {
 
 // Stack navigator for Library tab
 function LibraryStack() {
+  const colors = useTheme();
+  
   return (
     <Stack.Navigator
       screenOptions={{
@@ -91,6 +96,7 @@ function LibraryStack() {
 
 export default function AppNavigator() {
   const insets = useSafeAreaInsets();
+  const colors = useTheme();
   
   return (
     <NavigationContainer>
@@ -115,7 +121,7 @@ export default function AppNavigator() {
             tabBarInactiveTintColor: colors.textSecondary,
             headerShown: false,
             tabBarStyle: {
-              backgroundColor: colors.backgroundLight,
+              backgroundColor: colors.tabBarBackground,
               borderTopWidth: 1,
               borderTopColor: colors.borderLight,
               paddingBottom: Math.max(insets.bottom, 5),

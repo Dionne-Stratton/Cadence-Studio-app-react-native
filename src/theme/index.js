@@ -3,10 +3,40 @@
  * Centralized theme values for colors, spacing, typography, etc.
  */
 
-import { colors } from './colors';
+import { lightColors, darkColors } from './themes';
+import { useColorScheme } from 'react-native';
+import useStore from '../store';
 
+/**
+ * Get current theme colors based on theme mode setting
+ * @param {string} themeMode - 'light', 'dark', or 'system'
+ * @param {string} systemColorScheme - System color scheme from useColorScheme()
+ * @returns {object} Color palette object
+ */
+export function getThemeColors(themeMode, systemColorScheme) {
+  if (themeMode === 'dark') {
+    return darkColors;
+  } else if (themeMode === 'light') {
+    return lightColors;
+  } else {
+    // 'system' - use device setting
+    return systemColorScheme === 'dark' ? darkColors : lightColors;
+  }
+}
+
+/**
+ * Hook to get current theme colors
+ * Automatically updates when theme mode changes
+ */
+export function useTheme() {
+  const themeMode = useStore((state) => state.settings.themeMode || 'system');
+  const systemColorScheme = useColorScheme();
+  return getThemeColors(themeMode, systemColorScheme);
+}
+
+// Default export for backward compatibility
 export const theme = {
-  colors,
+  colors: lightColors,
   
   // Spacing scale
   spacing: {

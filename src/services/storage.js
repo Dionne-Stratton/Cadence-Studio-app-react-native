@@ -18,6 +18,7 @@ const DEFAULT_SETTINGS = {
   enableVibration: true,
   keepScreenAwakeDuringSession: true,
   historyRetention: 'unlimited',
+  themeMode: 'system', // 'light', 'dark', or 'system'
 };
 
 /**

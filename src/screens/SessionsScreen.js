@@ -16,11 +16,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import useStore from '../store';
 import { getSessionTotalDuration, formatTime } from '../types';
 import { sessionSharingService } from '../services/sessionSharing';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme';
 
 export default function SessionsScreen({ navigation }) {
   const [safeAreaKey, setSafeAreaKey] = React.useState(0);
   const insets = useSafeAreaInsets();
+  const colors = useTheme();
   const sessionTemplates = useStore((state) => state.sessionTemplates);
   const deleteSessionTemplate = useStore((state) => state.deleteSessionTemplate);
   const duplicateSessionTemplate = useStore((state) => state.duplicateSessionTemplate);
@@ -153,6 +154,8 @@ export default function SessionsScreen({ navigation }) {
     }
   };
 
+  const styles = getStyles(colors);
+
   const renderSessionItem = ({ item }) => {
     const totalDuration = getSessionTotalDuration(item);
     const blockCount = item.items ? item.items.length : 0;
@@ -273,7 +276,7 @@ export default function SessionsScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

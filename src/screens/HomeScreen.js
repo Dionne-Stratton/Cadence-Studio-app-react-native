@@ -17,11 +17,12 @@ import {
   calculateLongestStreak,
   getThisWeekHistory,
 } from '../utils/history';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const colors = useTheme();
   
   const sessionTemplates = useStore((state) => state.sessionTemplates);
   const sessionHistory = useStore((state) => state.sessionHistory);
@@ -121,6 +122,8 @@ export default function HomeScreen() {
     });
   };
   
+  const styles = getStyles(colors);
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
@@ -243,7 +246,7 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -324,11 +327,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.textSecondary,
   },
-  streakValue: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#4A7C9E',
-  },
   streakHint: {
     fontSize: 14,
     color: colors.textTertiary,
@@ -346,11 +344,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginBottom: 4,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#4A7C9E',
   },
   activityList: {
     gap: 12,
@@ -377,7 +370,17 @@ const styles = StyleSheet.create({
   },
   activityDuration: {
     fontSize: 14,
-    color: '#4A7C9E',
+    color: colors.primary,
     fontWeight: '500',
+  },
+  streakValue: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.primary,
   },
 });

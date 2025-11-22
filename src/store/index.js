@@ -19,6 +19,7 @@ const useStore = create((set, get) => ({
     enableVibration: true,
     keepScreenAwakeDuringSession: true,
     historyRetention: 'unlimited',
+    themeMode: 'system',
   },
 
   // Running session state

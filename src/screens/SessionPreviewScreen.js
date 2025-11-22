@@ -15,12 +15,15 @@ import {
   getSessionTotalDuration,
   formatTime,
 } from '../types';
+import { useTheme } from '../theme';
 
 export default function SessionPreviewScreen({ navigation, route }) {
   const { sessionId } = route.params || {};
+  const colors = useTheme();
   const sessionTemplates = useStore((state) => state.sessionTemplates);
   const deleteSessionTemplate = useStore((state) => state.deleteSessionTemplate);
   const session = sessionTemplates.find((s) => s.id === sessionId);
+  const styles = getStyles(colors);
 
   if (!session) {
     return (
@@ -153,10 +156,10 @@ export default function SessionPreviewScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -165,15 +168,15 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   header: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.cardBackground,
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: colors.borderLight,
   },
   sessionName: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: colors.text,
     marginBottom: 16,
   },
   summaryContainer: {
@@ -185,13 +188,13 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   summaryValue: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#4A7C9E',
+    color: colors.primary,
   },
   blocksSection: {
     padding: 16,
@@ -199,12 +202,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 12,
   },
   blockItem: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    backgroundColor: colors.cardBackground,
     borderRadius: 8,
     padding: 16,
     marginBottom: 12,
@@ -219,13 +222,13 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#4A7C9E',
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   blockIndexText: {
-    color: '#fff',
+    color: colors.textLight,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -235,7 +238,7 @@ const styles = StyleSheet.create({
   blockLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 4,
   },
   blockMeta: {
@@ -244,12 +247,12 @@ const styles = StyleSheet.create({
   },
   blockType: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     textTransform: 'capitalize',
   },
   blockTiming: {
     fontSize: 14,
-    color: '#4A7C9E',
+    color: colors.primary,
     fontWeight: '500',
   },
   emptyContainer: {
@@ -258,7 +261,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#999',
+    color: colors.textTertiary,
   },
   actions: {
     position: 'absolute',
@@ -267,9 +270,9 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: 'row',
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: colors.cardBackground,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: colors.borderLight,
     gap: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
@@ -284,34 +287,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backButton: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: colors.border,
   },
   backButtonText: {
-    color: '#666',
+    color: colors.textSecondary,
   },
   editButton: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.cardBackground,
     borderWidth: 1,
-    borderColor: '#4A7C9E',
+    borderColor: colors.primary,
   },
   editButtonText: {
-    color: '#4A7C9E',
+    color: colors.primary,
   },
   deleteButton: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.cardBackground,
     borderWidth: 1,
-    borderColor: '#ff5252',
+    borderColor: colors.error,
   },
   deleteButtonText: {
-    color: '#ff5252',
+    color: colors.error,
   },
   playButton: {
-    backgroundColor: '#4A7C9E',
+    backgroundColor: colors.primary,
   },
   playButtonText: {
-    color: '#fff',
+    color: colors.textLight,
   },
   actionButtonText: {
     fontSize: 16,
@@ -322,7 +325,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 18,
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 20,
   },

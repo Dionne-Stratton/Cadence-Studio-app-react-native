@@ -12,10 +12,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import useStore from '../store';
 import { sessionSharingService } from '../services/sessionSharing';
+import { useTheme } from '../theme';
 
 export default function SettingsScreen({ navigation }) {
   const [safeAreaKey, setSafeAreaKey] = React.useState(0);
   const insets = useSafeAreaInsets();
+  const colors = useTheme();
   const settings = useStore((state) => state.settings);
   const updateSettings = useStore((state) => state.updateSettings);
   const addSessionTemplate = useStore((state) => state.addSessionTemplate);
@@ -57,6 +59,10 @@ export default function SettingsScreen({ navigation }) {
     updateSettings({ historyRetention: retention });
   };
 
+  const handleThemeModeChange = (mode) => {
+    updateSettings({ themeMode: mode });
+  };
+
   const handleDeleteAllHistory = () => {
     Alert.alert(
       'Delete All History',
@@ -74,6 +80,8 @@ export default function SettingsScreen({ navigation }) {
       ]
     );
   };
+
+  const styles = getStyles(colors);
 
   const renderSettingSection = (title, children) => (
     <View style={styles.section}>
@@ -93,8 +101,8 @@ export default function SettingsScreen({ navigation }) {
       <Switch
         value={value}
         onValueChange={onToggle}
-        trackColor={{ false: '#ddd', true: '#4A7C9E' }}
-        thumbColor="#fff"
+        trackColor={{ false: colors.switchInactive, true: colors.switchActive }}
+        thumbColor={colors.textLight}
       />
     </View>
   );
@@ -231,6 +239,23 @@ export default function SettingsScreen({ navigation }) {
         </View>
       ))}
 
+      {/* Appearance Settings */}
+      {renderSettingSection('Appearance', (
+        <View>
+          {renderOptionSetting(
+            'Theme',
+            'Choose light mode, dark mode, or follow system setting',
+            [
+              { label: 'Light', value: 'light' },
+              { label: 'Dark', value: 'dark' },
+              { label: 'System', value: 'system' },
+            ],
+            settings.themeMode || 'system',
+            handleThemeModeChange
+          )}
+        </View>
+      ))}
+
       {/* Import/Export Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Session Sharing</Text>
@@ -285,17 +310,17 @@ export default function SettingsScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   content: {
     padding: 16,
     paddingBottom: 32,
   },
   section: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.cardBackground,
     borderRadius: 8,
     padding: 16,
     marginBottom: 16,
@@ -308,7 +333,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 16,
   },
   settingRow: {
@@ -317,7 +342,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: colors.borderMedium,
   },
   settingContent: {
     flex: 1,
@@ -326,12 +351,12 @@ const styles = StyleSheet.create({
   settingLabel: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#333',
+    color: colors.text,
     marginBottom: 4,
   },
   settingDescription: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
   },
   optionsContainer: {
     flexDirection: 'row',
@@ -341,21 +366,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: colors.border,
   },
   optionButtonActive: {
-    backgroundColor: '#4A7C9E',
-    borderColor: '#4A7C9E',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   optionButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: colors.textSecondary,
   },
   optionButtonTextActive: {
-    color: '#fff',
+    color: colors.textLight,
   },
   numberInputContainer: {
     flexDirection: 'row',
@@ -366,29 +391,29 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: colors.border,
   },
   numberButtonText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#4A7C9E',
+    color: colors.primary,
   },
   numberButtonTextDisabled: {
-    color: '#ccc',
+    color: colors.textTertiary,
   },
   numberValue: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     minWidth: 40,
     textAlign: 'center',
   },
   actionButton: {
-    backgroundColor: '#4A7C9E',
+    backgroundColor: colors.primary,
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -396,22 +421,22 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   actionButtonText: {
-    color: '#fff',
+    color: colors.textLight,
     fontSize: 16,
     fontWeight: '600',
   },
   actionDescription: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 8,
   },
   deleteButton: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.cardBackground,
     borderWidth: 1,
-    borderColor: '#ff5252',
+    borderColor: colors.error,
   },
   deleteButtonText: {
-    color: '#ff5252',
+    color: colors.error,
   },
 });

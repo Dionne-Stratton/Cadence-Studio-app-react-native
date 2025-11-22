@@ -12,9 +12,11 @@ import {
 import useStore from '../store';
 import { BlockType, BlockMode } from '../types';
 import { generateId } from '../utils/id';
+import { useTheme } from '../theme';
 
 export default function BlockEditScreen({ navigation, route }) {
   const { blockId } = route.params || {};
+  const colors = useTheme();
   const blockTemplates = useStore((state) => state.blockTemplates);
   const addBlockTemplate = useStore((state) => state.addBlockTemplate);
   const updateBlockTemplate = useStore((state) => state.updateBlockTemplate);
@@ -42,6 +44,7 @@ export default function BlockEditScreen({ navigation, route }) {
     existingBlock?.perRepSeconds || 5
   );
   const [notes, setNotes] = useState(existingBlock?.notes || '');
+  const styles = getStyles(colors);
 
   useEffect(() => {
     navigation.setOptions({
@@ -51,7 +54,7 @@ export default function BlockEditScreen({ navigation, route }) {
         </TouchableOpacity>
       ),
     });
-  }, [label, type, mode, minutes, seconds, reps, perRepSeconds, notes]);
+  }, [label, type, mode, minutes, seconds, reps, perRepSeconds, notes, styles]);
 
   const handleSave = async () => {
     // Validation
@@ -156,7 +159,7 @@ export default function BlockEditScreen({ navigation, route }) {
             value={label}
             onChangeText={setLabel}
             placeholder="e.g., Bicep curls"
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.textTertiary}
           />
         </View>
 
@@ -248,7 +251,7 @@ export default function BlockEditScreen({ navigation, route }) {
             value={notes}
             onChangeText={setNotes}
             placeholder="Additional notes or instructions..."
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.textTertiary}
             multiline
             numberOfLines={4}
             textAlignVertical="top"
@@ -259,10 +262,10 @@ export default function BlockEditScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   content: {
     padding: 16,
@@ -273,16 +276,17 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.cardBackground,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: colors.border,
+    color: colors.text,
     ...Platform.select({
       android: {
         paddingVertical: 12,
@@ -302,22 +306,22 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
-    backgroundColor: '#fff',
+    backgroundColor: colors.cardBackground,
     borderWidth: 2,
-    borderColor: '#ddd',
+    borderColor: colors.border,
     alignItems: 'center',
   },
   typeButtonActive: {
-    borderColor: '#4A7C9E',
-    backgroundColor: '#f3e5f5',
+    borderColor: colors.primary,
+    backgroundColor: colors.purpleLight,
   },
   typeButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: colors.textSecondary,
   },
   typeButtonTextActive: {
-    color: '#4A7C9E',
+    color: colors.primary,
   },
   modeButtonContainer: {
     flexDirection: 'row',
@@ -328,22 +332,22 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
-    backgroundColor: '#fff',
+    backgroundColor: colors.cardBackground,
     borderWidth: 2,
-    borderColor: '#ddd',
+    borderColor: colors.border,
     alignItems: 'center',
   },
   modeButtonActive: {
-    borderColor: '#4A7C9E',
-    backgroundColor: '#f3e5f5',
+    borderColor: colors.primary,
+    backgroundColor: colors.purpleLight,
   },
   modeButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: colors.textSecondary,
   },
   modeButtonTextActive: {
-    color: '#4A7C9E',
+    color: colors.primary,
   },
   durationContainer: {
     flexDirection: 'row',
@@ -353,23 +357,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   durationInput: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.cardBackground,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: colors.border,
     textAlign: 'center',
+    color: colors.text,
   },
   durationLabel: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 4,
   },
   hint: {
     fontSize: 12,
-    color: '#999',
+    color: colors.textTertiary,
     marginTop: 4,
   },
   saveButton: {
@@ -377,7 +382,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   saveButtonText: {
-    color: '#fff',
+    color: colors.textLight,
     fontSize: 16,
     fontWeight: '600',
   },

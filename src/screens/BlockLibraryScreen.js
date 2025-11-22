@@ -11,8 +11,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import useStore from '../store';
 import { BlockType, getBlockTimingSummary } from '../types';
+import { useTheme } from '../theme';
 
 export default function BlockLibraryScreen({ navigation }) {
+  const colors = useTheme();
   const blockTemplates = useStore((state) => state.blockTemplates);
   const deleteBlockTemplate = useStore((state) => state.deleteBlockTemplate);
   const [refreshing, setRefreshing] = useState(false);
@@ -45,6 +47,8 @@ export default function BlockLibraryScreen({ navigation }) {
     await useStore.getState().initialize();
     setRefreshing(false);
   };
+
+  const styles = getStyles(colors);
 
   const renderBlockItem = ({ item }) => {
     const typeLabels = {
@@ -105,17 +109,17 @@ export default function BlockLibraryScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   listContent: {
     padding: 16,
     paddingBottom: 80,
   },
   blockItem: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.cardBackground,
     borderRadius: 8,
     padding: 16,
     marginBottom: 12,
@@ -134,7 +138,7 @@ const styles = StyleSheet.create({
   blockLabel: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 6,
   },
   blockMeta: {
@@ -144,22 +148,22 @@ const styles = StyleSheet.create({
   },
   blockType: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     textTransform: 'capitalize',
   },
   blockTiming: {
     fontSize: 14,
-    color: '#4A7C9E',
+    color: colors.primary,
     fontWeight: '500',
   },
   deleteButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
-    backgroundColor: '#ff5252',
+    backgroundColor: colors.error,
   },
   deleteButtonText: {
-    color: '#fff',
+    color: colors.textLight,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -171,19 +175,19 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    color: '#666',
+    color: colors.textSecondary,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#999',
+    color: colors.textTertiary,
   },
   addButton: {
     position: 'absolute',
     bottom: 20,
     left: 16,
     right: 16,
-    backgroundColor: '#4A7C9E',
+    backgroundColor: colors.primary,
     borderRadius: 8,
     paddingVertical: 16,
     alignItems: 'center',
@@ -194,7 +198,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   addButtonText: {
-    color: '#fff',
+    color: colors.textLight,
     fontSize: 16,
     fontWeight: '600',
   },
