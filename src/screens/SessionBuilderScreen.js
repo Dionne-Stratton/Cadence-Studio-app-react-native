@@ -72,7 +72,7 @@ export default function SessionBuilderScreen({ navigation, route }) {
         </TouchableOpacity>
       ),
     });
-  }, [sessionName, items]);
+  }, [sessionName, items, scheduledDaysOfWeek]);
 
   const handleSave = async () => {
     if (!sessionName.trim()) {
@@ -93,13 +93,13 @@ export default function SessionBuilderScreen({ navigation, route }) {
         await updateSessionTemplate(sessionId, {
           name: sessionName.trim(),
           items,
-          scheduledDaysOfWeek: scheduledDaysOfWeek.length > 0 ? scheduledDaysOfWeek : undefined,
+          scheduledDaysOfWeek: scheduledDaysOfWeek,
         });
       } else {
         await addSessionTemplate({
           name: sessionName.trim(),
           items,
-          scheduledDaysOfWeek: scheduledDaysOfWeek.length > 0 ? scheduledDaysOfWeek : undefined,
+          scheduledDaysOfWeek: scheduledDaysOfWeek,
         });
       }
       navigation.goBack();

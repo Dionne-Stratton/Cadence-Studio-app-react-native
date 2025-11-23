@@ -88,7 +88,10 @@ function LibraryStack() {
       <Stack.Screen
         name="BlockEdit"
         component={BlockEditScreen}
-        options={{ title: 'Edit Activity' }}
+        options={({ route }) => ({
+          title: route.params?.blockId ? 'Edit Activity' : 'Add Activity',
+          headerStatusBarHeight: 60,
+        })}
       />
     </Stack.Navigator>
   );
