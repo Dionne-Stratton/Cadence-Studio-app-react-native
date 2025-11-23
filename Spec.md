@@ -46,7 +46,177 @@ All data is stored locally. No backend.
 
 ## **2.a) BlockTemplate (reusable “activity”)**
 
-A reusable activity like an exercise, rest block, or study timer segment.
+### **BlockTemplate (Reusable Activity)**
+
+Represents a reusable activity in the user’s Library.
+_Rest_ and _Transition_ are no longer templates and are created only inside sessions.
+
+Each BlockTemplate has:
+
+- `id: string`
+- `label: string`
+- `type: "activity"`
+- `mode: "duration" | "reps"`
+- Timing fields:
+
+  - If `duration`:
+
+    - `durationSeconds: number`
+
+  - If `reps`:
+
+    - `reps: number`
+    - `perRepSeconds: number`
+
+- **category: string | null**
+
+  - One of the built-in categories OR a custom user-created category (Pro)
+
+- Optional metadata:
+
+  - `color: string`
+  - `icon: string`
+  - `notes: string`
+
+---
+
+# 🎨 **BUILT-IN ACTIVITY CATEGORIES (FREE TIER)**
+
+These categories are always available to every user:
+
+1. `"Exercise"`
+2. `"Study"`
+3. `"Work"`
+4. `"Household"`
+5. `"Creative"`
+6. `"Uncategorized"`
+
+These appear as the standard selectable chips in the Activity Editor.
+
+---
+
+# 🌟 **CUSTOM CATEGORIES (PRO FEATURE)**
+
+Free users:
+
+- Cannot create custom categories.
+- Can only choose from the built-in category list.
+- When importing a session containing a custom category:
+
+  - The imported block’s category is mapped to `"Uncategorized"`.
+
+Pro users:
+
+- May create **unlimited custom categories**.
+- Custom categories are stored in Settings:
+
+  ```
+  customCategories: string[]
+  ```
+
+- Custom categories appear **below a divider** in the category picker.
+- Can rename or delete custom categories.
+
+  - Deleting a custom category prompts to reassign affected activities.
+
+Pro import behavior:
+
+- If an imported block has a category not recognized:
+
+  - Automatically add it to `customCategories`.
+
+---
+
+# 📚 **UPDATED LIBRARY BEHAVIOR**
+
+The Library contains **Activities only**, not rest/transition.
+
+Library screen shows:
+
+- Label
+- Category
+- Timing summary
+- Search + category filter
+
+“Add Activity” opens Activity Editor.
+
+---
+
+# 📝 **UPDATED ACTIVITY EDITOR (CATEGORIES INTEGRATED)**
+
+Fields:
+
+- Label
+- Category picker:
+
+  - Built-ins always available
+  - Custom categories displayed beneath a divider (Pro)
+  - “+ Add Category” button (Pro only)
+
+- Mode: duration or reps
+- Timing inputs
+- Notes (optional)
+
+If not Pro:
+
+- “+ Add Category” button shows lock state and cannot be tapped.
+
+---
+
+# 🔁 **UPDATED SESSION BUILDER (REST & TRANSITION CHANGES)**
+
+When adding a block:
+
+### 1. Add Activity
+
+- Opens Library modal to select from Activity templates.
+
+### 2. Add Rest
+
+- Opens quick form for duration only.
+- Creates BlockInstance with:
+
+  - `type: "rest"`
+  - `category: null`
+
+### 3. Add Transition
+
+- Same flow, but:
+
+  - `type: "transition"`
+
+Rest and transition are **not saved to Library**.
+
+---
+
+# 📤 **UPDATED EXPORT/IMPORT LOGIC**
+
+### Export
+
+- Each BlockInstance exports its `category` string unchanged.
+
+### Import (Free)
+
+- If category is built-in → keep it.
+- If category is custom → map to `"Uncategorized"`.
+
+### Import (Pro)
+
+- If category is built-in → keep it.
+- If category is not known → auto-add to `customCategories`.
+
+---
+
+# ⚙️ **UPDATED SETTINGS DATA MODEL**
+
+Add:
+
+```
+customCategories: string[]     // Pro only
+isProUser: boolean             // monetization to be added later
+```
+
+Free users have `customCategories = []`.
 
 **Fields:**
 

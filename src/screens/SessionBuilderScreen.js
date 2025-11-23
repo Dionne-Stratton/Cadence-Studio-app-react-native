@@ -11,10 +11,11 @@ import {
   Switch,
 } from 'react-native';
 import useStore from '../store';
-import { BlockType, getBlockTimingSummary, getSessionTotalDuration, formatTime } from '../types';
+import { BlockType, getBlockTimingSummary, getSessionTotalDuration, formatTime, getBlockTypeColor } from '../types';
 import { generateId } from '../utils/id';
 import { getISOWeekday } from '../utils/history';
 import AddBlockModal from '../components/AddBlockModal';
+import { useTheme } from '../theme';
 
 export default function SessionBuilderScreen({ navigation, route }) {
   const { sessionId } = route.params || {};
@@ -171,16 +172,19 @@ export default function SessionBuilderScreen({ navigation, route }) {
       [BlockType.REST]: 'Rest',
       [BlockType.TRANSITION]: 'Transition',
     };
+    const blockTypeColor = getBlockTypeColor(item.type, colors);
 
     return (
-      <View style={styles.blockItem}>
+      <View style={[styles.blockItem, { borderLeftWidth: 4, borderLeftColor: blockTypeColor }]}>
         <View style={styles.blockContent}>
           <View style={styles.blockHeader}>
-            <Text style={styles.blockIndex}>{index + 1}</Text>
+            <View style={[styles.blockIndex, { backgroundColor: blockTypeColor }]}>
+              <Text style={styles.blockIndexText}>{index + 1}</Text>
+            </View>
             <Text style={styles.blockLabel}>{item.label}</Text>
           </View>
           <View style={styles.blockMeta}>
-            <Text style={styles.blockType}>
+            <Text style={[styles.blockType, { color: blockTypeColor }]}>
               {typeLabels[item.type] || item.type}
             </Text>
             <Text style={styles.blockTiming}>
@@ -234,6 +238,7 @@ export default function SessionBuilderScreen({ navigation, route }) {
   };
 
   const totalDuration = getSessionTotalDuration({ items });
+  const styles = getStyles(colors);
 
   return (
     <View style={styles.container}>
@@ -246,7 +251,7 @@ export default function SessionBuilderScreen({ navigation, route }) {
             value={sessionName}
             onChangeText={setSessionName}
             placeholder="e.g., Leg Day A"
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.textTertiary}
           />
         </View>
 
@@ -344,7 +349,7 @@ export default function SessionBuilderScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
@@ -388,35 +393,35 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fff',
+    borderColor: colors.border,
+    backgroundColor: colors.cardBackground,
     justifyContent: 'center',
     alignItems: 'center',
   },
   dayButtonActive: {
-    backgroundColor: '#4A7C9E',
-    borderColor: '#4A7C9E',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   dayButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: colors.textSecondary,
   },
   dayButtonTextActive: {
-    color: '#fff',
+    color: colors.textLight,
   },
   scheduledHint: {
     fontSize: 12,
-    color: '#999',
+    color: colors.textTertiary,
     marginTop: 8,
     fontStyle: 'italic',
   },
   summaryContainer: {
     flexDirection: 'row',
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: colors.cardBackground,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: colors.borderLight,
   },
   summaryItem: {
     flex: 1,
@@ -424,13 +429,13 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   summaryValue: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#4A7C9E',
+    color: colors.primary,
   },
   blocksSection: {
     padding: 16,
@@ -438,13 +443,14 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 12,
   },
   blockItem: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.cardBackground,
     borderRadius: 8,
     padding: 16,
+    paddingLeft: 12, // Account for border
     marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
@@ -464,16 +470,22 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   blockIndex: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  blockIndexText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#4A7C9E',
-    marginRight: 8,
-    minWidth: 24,
+    color: colors.textLight,
   },
   blockLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     flex: 1,
   },
   blockMeta: {
@@ -484,12 +496,12 @@ const styles = StyleSheet.create({
   },
   blockType: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     textTransform: 'capitalize',
   },
   blockTiming: {
     fontSize: 14,
-    color: '#4A7C9E',
+    color: colors.primary,
     fontWeight: '500',
   },
   blockActions: {
@@ -506,44 +518,44 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 6,
     borderRadius: 6,
-    backgroundColor: '#e3f2fd',
+    backgroundColor: colors.infoLight,
     minWidth: 32,
     alignItems: 'center',
   },
   reorderButtonDisabled: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
     opacity: 0.5,
   },
   reorderButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1976d2',
+    color: colors.info,
   },
   reorderButtonTextDisabled: {
-    color: '#999',
+    color: colors.textTertiary,
   },
   actionButton: {
     paddingHorizontal: 8,
     paddingVertical: 6,
     borderRadius: 6,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   actionButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#4A7C9E',
+    color: colors.primary,
   },
   duplicateButton: {
-    backgroundColor: '#e3f2fd',
+    backgroundColor: colors.infoLight,
   },
   duplicateButtonText: {
-    color: '#1976d2',
+    color: colors.info,
   },
   deleteButton: {
-    backgroundColor: '#ffebee',
+    backgroundColor: colors.errorLight,
   },
   deleteButtonText: {
-    color: '#d32f2f',
+    color: colors.errorText,
   },
   emptyContainer: {
     padding: 40,
@@ -551,19 +563,19 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#999',
+    color: colors.textTertiary,
   },
   addButton: {
     position: 'absolute',
     bottom: 20,
     left: 16,
     right: 16,
-    backgroundColor: '#4A7C9E',
+    backgroundColor: colors.primary,
     borderRadius: 8,
     paddingVertical: 16,
     alignItems: 'center',
@@ -574,7 +586,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   addButtonText: {
-    color: '#fff',
+    color: colors.textLight,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -583,7 +595,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   saveButtonText: {
-    color: '#fff',
+    color: colors.textLight,
     fontSize: 16,
     fontWeight: '600',
   },

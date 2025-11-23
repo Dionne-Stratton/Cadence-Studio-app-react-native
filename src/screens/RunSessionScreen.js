@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -6,32 +6,39 @@ import {
   TouchableOpacity,
   Modal,
   Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import { Ionicons } from '@expo/vector-icons';
-import useStore from '../store';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
+import { Ionicons } from "@expo/vector-icons";
+import useStore from "../store";
 import {
   BlockType,
   getBlockDurationSeconds,
   getBlockTimingSummary,
   getSessionTotalDuration,
   formatTime,
-} from '../types';
-import { cueService } from '../services/cues';
-import { notificationService } from '../services/notifications';
+  getBlockTypeColor,
+} from "../types";
+import { useTheme } from "../theme";
+import { cueService } from "../services/cues";
+import { notificationService } from "../services/notifications";
 
 export default function RunSessionScreen({ navigation, route }) {
   const { sessionId } = route.params || {};
+  const colors = useTheme();
   const sessionTemplates = useStore((state) => state.sessionTemplates);
   const settings = useStore((state) => state.settings);
   const runningSession = useStore((state) => state.runningSession);
   const currentIndex = useStore((state) => state.currentIndex);
   const remainingSeconds = useStore((state) => state.remainingSeconds);
   const isRunning = useStore((state) => state.isRunning);
-  const elapsedSecondsInSession = useStore((state) => state.elapsedSecondsInSession);
+  const elapsedSecondsInSession = useStore(
+    (state) => state.elapsedSecondsInSession
+  );
   const isPreCountdown = useStore((state) => state.isPreCountdown);
-  const preCountdownRemaining = useStore((state) => state.preCountdownRemaining);
+  const preCountdownRemaining = useStore(
+    (state) => state.preCountdownRemaining
+  );
   const isSessionComplete = useStore((state) => state.isSessionComplete);
 
   const startSession = useStore((state) => state.startSession);
@@ -54,7 +61,7 @@ export default function RunSessionScreen({ navigation, route }) {
     if (sessionId && !runningSession) {
       const success = startSession(sessionId);
       if (!success) {
-        Alert.alert('Error', 'Failed to start session. Please try again.');
+        Alert.alert("Error", "Failed to start session. Please try again.");
         navigation.goBack();
       } else {
         prevIndexRef.current = 0;
@@ -63,31 +70,59 @@ export default function RunSessionScreen({ navigation, route }) {
   }, [sessionId]);
 
   // Schedule notifications when session starts (after pre-countdown)
+  // Only schedule once when session starts, not every second
+  const hasScheduledNotifications = useRef(false);
+  const lastScheduledIndex = useRef(-1);
   useEffect(() => {
     if (runningSession && !isPreCountdown && isRunning && !isSessionComplete) {
-      // Session started - schedule notifications
-      notificationService.scheduleSessionNotifications(
-        runningSession,
-        currentIndex,
-        remainingSeconds,
-        settings.warningSecondsBeforeEnd
-      );
+      // Only schedule if we haven't scheduled for this block index yet
+      // Block transitions are handled by the separate block transition effect
+      if (
+        !hasScheduledNotifications.current ||
+        currentIndex !== lastScheduledIndex.current
+      ) {
+        // Get current state from store to ensure we have the latest remainingSeconds
+        const currentState = useStore.getState();
+        notificationService.scheduleSessionNotifications(
+          runningSession,
+          currentIndex,
+          currentState.remainingSeconds,
+          settings.warningSecondsBeforeEnd
+        );
+        hasScheduledNotifications.current = true;
+        lastScheduledIndex.current = currentIndex;
+      }
+    } else {
+      // Reset flag when session stops or pauses
+      hasScheduledNotifications.current = false;
+      lastScheduledIndex.current = -1;
     }
 
     return () => {
       // Clean up notifications on unmount
       notificationService.cancelAllNotifications();
     };
-  }, [runningSession, isPreCountdown, isRunning, currentIndex, remainingSeconds]);
+  }, [
+    runningSession,
+    isPreCountdown,
+    isRunning,
+    currentIndex,
+    isSessionComplete,
+  ]);
 
   // Track block transitions for cues
   useEffect(() => {
-    if (currentIndex !== prevIndexRef.current && currentIndex > prevIndexRef.current && !isPreCountdown && runningSession) {
+    if (
+      currentIndex !== prevIndexRef.current &&
+      currentIndex > prevIndexRef.current &&
+      !isPreCountdown &&
+      runningSession
+    ) {
       // Block transition happened (moved to next block)
       lastWarningTime.current = null;
       cueService.blockComplete(settings.enableSounds, settings.enableVibration);
       prevIndexRef.current = currentIndex;
-      
+
       // Reschedule notifications for remaining blocks
       if (isRunning) {
         notificationService.rescheduleNotifications(
@@ -98,7 +133,13 @@ export default function RunSessionScreen({ navigation, route }) {
         );
       }
     }
-  }, [currentIndex, isPreCountdown, runningSession, isRunning, remainingSeconds]);
+  }, [
+    currentIndex,
+    isPreCountdown,
+    runningSession,
+    isRunning,
+    remainingSeconds,
+  ]);
 
   // Track session completion
   useEffect(() => {
@@ -174,7 +215,10 @@ export default function RunSessionScreen({ navigation, route }) {
           lastWarningTime.current !== currentRemaining
         ) {
           lastWarningTime.current = currentRemaining;
-          cueService.almostDone(settings.enableSounds, settings.enableVibration);
+          cueService.almostDone(
+            settings.enableSounds,
+            settings.enableVibration
+          );
         }
 
         // Tick the timer (this handles block transitions internally)
@@ -193,7 +237,13 @@ export default function RunSessionScreen({ navigation, route }) {
         timerInterval.current = null;
       }
     };
-  }, [isRunning, isPreCountdown, runningSession, currentIndex, remainingSeconds]);
+  }, [
+    isRunning,
+    isPreCountdown,
+    runningSession,
+    currentIndex,
+    remainingSeconds,
+  ]);
 
   // Clean up on unmount
   useEffect(() => {
@@ -215,22 +265,18 @@ export default function RunSessionScreen({ navigation, route }) {
   };
 
   const handleStopSession = () => {
-    Alert.alert(
-      'Stop Session',
-      'Are you sure you want to stop this session?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Stop',
-          style: 'destructive',
-          onPress: () => {
-            notificationService.cancelAllNotifications();
-            stopSession();
-            navigation.goBack();
-          },
+    Alert.alert("Stop Session", "Are you sure you want to stop this session?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Stop",
+        style: "destructive",
+        onPress: () => {
+          notificationService.cancelAllNotifications();
+          stopSession();
+          navigation.goBack();
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleComplete = () => {
@@ -265,13 +311,13 @@ export default function RunSessionScreen({ navigation, route }) {
       pauseTimer();
     }
     lastWarningTime.current = null;
-    
+
     const hasNext = nextBlock();
     if (!hasNext) {
       handleSessionComplete();
     } else {
       cueService.blockComplete(settings.enableSounds, settings.enableVibration);
-      
+
       // Reschedule notifications after skipping
       if (runningSession) {
         const newState = useStore.getState();
@@ -282,7 +328,7 @@ export default function RunSessionScreen({ navigation, route }) {
           settings.warningSecondsBeforeEnd
         );
       }
-      
+
       if (!isRunning) {
         startTimer();
       }
@@ -294,7 +340,7 @@ export default function RunSessionScreen({ navigation, route }) {
       pauseTimer();
     }
     lastWarningTime.current = null;
-    
+
     const success = previousBlock();
     if (success) {
       // Reschedule notifications after going back
@@ -307,14 +353,18 @@ export default function RunSessionScreen({ navigation, route }) {
           settings.warningSecondsBeforeEnd
         );
       }
-      
+
       if (!isRunning) {
         startTimer();
       }
     }
   };
 
-  if (!runningSession || !runningSession.items || runningSession.items.length === 0) {
+  if (
+    !runningSession ||
+    !runningSession.items ||
+    runningSession.items.length === 0
+  ) {
     return (
       <View style={styles.container}>
         <Text style={styles.errorText}>No session loaded</Text>
@@ -329,17 +379,19 @@ export default function RunSessionScreen({ navigation, route }) {
   }
 
   const currentBlock = runningSession.items[currentIndex];
-  const nextBlockItem = currentIndex < runningSession.items.length - 1 
-    ? runningSession.items[currentIndex + 1]
-    : null;
+  const nextBlockItem =
+    currentIndex < runningSession.items.length - 1
+      ? runningSession.items[currentIndex + 1]
+      : null;
 
   const totalDuration = getSessionTotalDuration(runningSession);
-  const progress = totalDuration > 0 ? (elapsedSecondsInSession / totalDuration) * 100 : 0;
+  const progress =
+    totalDuration > 0 ? (elapsedSecondsInSession / totalDuration) * 100 : 0;
 
   const typeLabels = {
-    [BlockType.ACTIVITY]: 'Activity',
-    [BlockType.REST]: 'Rest',
-    [BlockType.TRANSITION]: 'Transition',
+    [BlockType.ACTIVITY]: "Activity",
+    [BlockType.REST]: "Rest",
+    [BlockType.TRANSITION]: "Transition",
   };
 
   // Pre-countdown screen
@@ -348,7 +400,7 @@ export default function RunSessionScreen({ navigation, route }) {
       <View style={styles.container}>
         <View style={styles.preCountdownContainer}>
           <Text style={styles.preCountdownText}>
-            {preCountdownRemaining > 0 ? preCountdownRemaining : 'GO!'}
+            {preCountdownRemaining > 0 ? preCountdownRemaining : "GO!"}
           </Text>
         </View>
       </View>
@@ -356,13 +408,10 @@ export default function RunSessionScreen({ navigation, route }) {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.stopButton}
-          onPress={handleStopSession}
-        >
+        <TouchableOpacity style={styles.stopButton} onPress={handleStopSession}>
           <Text style={styles.stopButtonText}>Stop</Text>
         </TouchableOpacity>
         <View style={styles.headerContent}>
@@ -382,17 +431,32 @@ export default function RunSessionScreen({ navigation, route }) {
       {/* Main Timer Area */}
       <View style={styles.mainArea}>
         <Text style={styles.blockLabel}>{currentBlock.label}</Text>
-        <Text style={styles.blockSubtext}>
-          {typeLabels[currentBlock.type] || currentBlock.type} • {getBlockTimingSummary(currentBlock)}
+        <Text
+          style={[
+            styles.blockSubtext,
+            { color: getBlockTypeColor(currentBlock.type, colors) },
+          ]}
+        >
+          {typeLabels[currentBlock.type] || currentBlock.type} •{" "}
+          {getBlockTimingSummary(currentBlock)}
         </Text>
-        
+
         <View style={styles.timerContainer}>
-          <Text style={styles.timerText}>{formatTime(remainingSeconds)}</Text>
+          <Text
+            style={[
+              styles.timerText,
+              { color: getBlockTypeColor(currentBlock.type, colors) },
+            ]}
+          >
+            {formatTime(remainingSeconds)}
+          </Text>
         </View>
 
         {nextBlockItem && (
           <View style={styles.nextBlockContainer}>
-            <Text style={styles.nextBlockLabel}>Next: {nextBlockItem.label}</Text>
+            <Text style={styles.nextBlockLabel}>
+              Next: {nextBlockItem.label}
+            </Text>
           </View>
         )}
       </View>
@@ -404,10 +468,12 @@ export default function RunSessionScreen({ navigation, route }) {
           onPress={handlePrevious}
           disabled={currentIndex === 0}
         >
-          <Text style={[
-            styles.controlButtonText,
-            currentIndex === 0 && styles.controlButtonTextDisabled
-          ]}>
+          <Text
+            style={[
+              styles.controlButtonText,
+              currentIndex === 0 && styles.controlButtonTextDisabled,
+            ]}
+          >
             ← Previous
           </Text>
         </TouchableOpacity>
@@ -417,7 +483,7 @@ export default function RunSessionScreen({ navigation, route }) {
           onPress={handleTogglePause}
         >
           <Ionicons
-            name={isRunning ? 'pause' : 'play'}
+            name={isRunning ? "pause" : "play"}
             size={24}
             color="#fff"
           />
@@ -428,10 +494,13 @@ export default function RunSessionScreen({ navigation, route }) {
           onPress={handleNext}
           disabled={currentIndex >= runningSession.items.length - 1}
         >
-          <Text style={[
-            styles.controlButtonText,
-            currentIndex >= runningSession.items.length - 1 && styles.controlButtonTextDisabled
-          ]}>
+          <Text
+            style={[
+              styles.controlButtonText,
+              currentIndex >= runningSession.items.length - 1 &&
+                styles.controlButtonTextDisabled,
+            ]}
+          >
             Next →
           </Text>
         </TouchableOpacity>
@@ -469,190 +538,190 @@ export default function RunSessionScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: "#1a1a1a",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingTop: 16,
     paddingBottom: 16,
     paddingHorizontal: 16,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: "#2a2a2a",
   },
   stopButton: {
     padding: 8,
     minWidth: 60,
   },
   stopButtonText: {
-    color: '#ff5252',
+    color: "#ff5252",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   headerContent: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
   sessionName: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
+    fontWeight: "600",
+    color: "#fff",
     marginBottom: 8,
   },
   progressBar: {
-    width: '100%',
+    width: "100%",
     height: 4,
-    backgroundColor: '#444',
+    backgroundColor: "#444",
     borderRadius: 2,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: 4,
   },
   progressFill: {
-    height: '100%',
-    backgroundColor: '#4A7C9E',
+    height: "100%",
+    backgroundColor: "#4A7C9E",
     borderRadius: 2,
   },
   progressText: {
     fontSize: 12,
-    color: '#999',
+    color: "#999",
   },
   mainArea: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 32,
   },
   blockLabel: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
+    fontWeight: "bold",
+    color: "#fff",
+    textAlign: "center",
     marginBottom: 12,
   },
   blockSubtext: {
     fontSize: 16,
-    color: '#999',
-    textAlign: 'center',
+    color: "#999",
+    textAlign: "center",
     marginBottom: 40,
   },
   timerContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 40,
   },
   timerText: {
     fontSize: 80,
-    fontWeight: 'bold',
-    color: '#4A7C9E',
-    fontFamily: 'monospace',
+    fontWeight: "bold",
+    color: "#4A7C9E",
+    fontFamily: "monospace",
   },
   nextBlockContainer: {
     marginTop: 20,
   },
   nextBlockLabel: {
     fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
   },
   controls: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
     padding: 16,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: "#2a2a2a",
     gap: 12,
   },
   controlButton: {
     flex: 1,
     paddingVertical: 16,
     borderRadius: 8,
-    alignItems: 'center',
-    backgroundColor: '#3a3a3a',
+    alignItems: "center",
+    backgroundColor: "#3a3a3a",
   },
   previousButton: {
-    backgroundColor: '#3a3a3a',
+    backgroundColor: "#3a3a3a",
   },
   playPauseButton: {
-    backgroundColor: '#4A7C9E',
+    backgroundColor: "#4A7C9E",
   },
   nextButton: {
-    backgroundColor: '#3a3a3a',
+    backgroundColor: "#3a3a3a",
   },
   controlButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   controlButtonTextDisabled: {
-    color: '#666',
+    color: "#666",
     opacity: 0.5,
   },
   preCountdownContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   preCountdownText: {
     fontSize: 120,
-    fontWeight: 'bold',
-    color: '#4A7C9E',
+    fontWeight: "bold",
+    color: "#4A7C9E",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalContent: {
-    backgroundColor: '#2a2a2a',
+    backgroundColor: "#2a2a2a",
     borderRadius: 16,
     padding: 32,
-    alignItems: 'center',
+    alignItems: "center",
     minWidth: 280,
   },
   completeTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: "bold",
+    color: "#fff",
     marginBottom: 16,
-    textAlign: 'center',
+    textAlign: "center",
   },
   completeText: {
     fontSize: 18,
-    color: '#fff',
+    color: "#fff",
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   completeSubtext: {
     fontSize: 14,
-    color: '#999',
+    color: "#999",
     marginBottom: 24,
-    textAlign: 'center',
+    textAlign: "center",
   },
   completeButton: {
-    backgroundColor: '#4A7C9E',
+    backgroundColor: "#4A7C9E",
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 32,
   },
   completeButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   errorText: {
     fontSize: 18,
-    color: '#fff',
-    textAlign: 'center',
+    color: "#fff",
+    textAlign: "center",
     marginBottom: 20,
   },
   backButton: {
-    backgroundColor: '#4A7C9E',
+    backgroundColor: "#4A7C9E",
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 32,
-    alignSelf: 'center',
+    alignSelf: "center",
   },
   backButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

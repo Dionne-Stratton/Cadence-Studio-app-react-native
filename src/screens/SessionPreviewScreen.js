@@ -14,6 +14,7 @@ import {
   getBlockTimingSummary,
   getSessionTotalDuration,
   formatTime,
+  getBlockTypeColor,
 } from '../types';
 import { useTheme } from '../theme';
 
@@ -47,22 +48,26 @@ export default function SessionPreviewScreen({ navigation, route }) {
     [BlockType.TRANSITION]: 'Transition',
   };
 
-  const renderBlockItem = ({ item, index }) => (
-    <View style={styles.blockItem}>
-      <View style={styles.blockIndex}>
-        <Text style={styles.blockIndexText}>{index + 1}</Text>
-      </View>
-      <View style={styles.blockContent}>
-        <Text style={styles.blockLabel}>{item.label}</Text>
-        <View style={styles.blockMeta}>
-          <Text style={styles.blockType}>
-            {typeLabels[item.type] || item.type}
-          </Text>
-          <Text style={styles.blockTiming}>{getBlockTimingSummary(item)}</Text>
+  const renderBlockItem = ({ item, index }) => {
+    const blockTypeColor = getBlockTypeColor(item.type, colors);
+    
+    return (
+      <View style={[styles.blockItem, { borderLeftWidth: 4, borderLeftColor: blockTypeColor }]}>
+        <View style={[styles.blockIndex, { backgroundColor: blockTypeColor }]}>
+          <Text style={styles.blockIndexText}>{index + 1}</Text>
+        </View>
+        <View style={styles.blockContent}>
+          <Text style={styles.blockLabel}>{item.label}</Text>
+          <View style={styles.blockMeta}>
+            <Text style={[styles.blockType, { color: blockTypeColor }]}>
+              {typeLabels[item.type] || item.type}
+            </Text>
+            <Text style={styles.blockTiming}>{getBlockTimingSummary(item)}</Text>
+          </View>
         </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -210,6 +215,7 @@ const getStyles = (colors) => StyleSheet.create({
     backgroundColor: colors.cardBackground,
     borderRadius: 8,
     padding: 16,
+    paddingLeft: 12, // Account for border
     marginBottom: 12,
     alignItems: 'center',
     shadowColor: '#000',
@@ -222,7 +228,6 @@ const getStyles = (colors) => StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,

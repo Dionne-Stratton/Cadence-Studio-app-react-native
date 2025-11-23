@@ -136,3 +136,41 @@ export function formatTime(seconds) {
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
+/**
+ * Get the color for a block type
+ * @param {string} blockType - One of BlockType enum values
+ * @param {object} colors - Theme colors object
+ * @returns {string} Color hex code
+ */
+export function getBlockTypeColor(blockType, colors) {
+  switch (blockType) {
+    case BlockType.ACTIVITY:
+      return colors.blockActivity;
+    case BlockType.REST:
+      return colors.blockRest;
+    case BlockType.TRANSITION:
+      return colors.blockTransition;
+    default:
+      return colors.textSecondary;
+  }
+}
+
+/**
+ * Get the background tint for a block type
+ * @param {string} blockType - One of BlockType enum values
+ * @param {object} colors - Theme colors object
+ * @returns {string} Background tint rgba string
+ */
+export function getBlockTypeTint(blockType, colors) {
+  switch (blockType) {
+    case BlockType.ACTIVITY:
+      return colors.blockActivityTint;
+    case BlockType.REST:
+      return colors.blockRestTint;
+    case BlockType.TRANSITION:
+      return colors.blockTransitionTint;
+    default:
+      return 'transparent';
+  }
+}
+

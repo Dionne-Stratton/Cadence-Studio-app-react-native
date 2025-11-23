@@ -47,6 +47,15 @@ export const lightColors = {
   
   // Purple light background (for selected states, if needed)
   purpleLight: '#f3e5f5',
+  
+  // Block type colors
+  blockActivity: '#3A86FF', // Blue
+  blockRest: '#43AA8B', // Teal/Green
+  blockTransition: '#F3722C', // Orange
+  // Block type background tints (10% opacity)
+  blockActivityTint: 'rgba(58, 134, 255, 0.10)',
+  blockRestTint: 'rgba(67, 170, 139, 0.10)',
+  blockTransitionTint: 'rgba(243, 114, 44, 0.10)',
 };
 
 export const darkColors = {
@@ -94,5 +103,14 @@ export const darkColors = {
   
   // Purple light background (for selected states, if needed)
   purpleLight: '#2d1b3d',
+  
+  // Block type colors (same as light mode for consistency)
+  blockActivity: '#3A86FF', // Blue
+  blockRest: '#43AA8B', // Teal/Green
+  blockTransition: '#F3722C', // Orange
+  // Block type background tints (10% opacity)
+  blockActivityTint: 'rgba(58, 134, 255, 0.10)',
+  blockRestTint: 'rgba(67, 170, 139, 0.10)',
+  blockTransitionTint: 'rgba(243, 114, 44, 0.10)',
 };
 

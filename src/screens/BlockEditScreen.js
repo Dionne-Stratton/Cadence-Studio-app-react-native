@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import useStore from '../store';
-import { BlockType, BlockMode } from '../types';
+import { BlockType, BlockMode, getBlockTypeColor } from '../types';
 import { generateId } from '../utils/id';
 import { useTheme } from '../theme';
 
@@ -110,24 +110,29 @@ export default function BlockEditScreen({ navigation, route }) {
     }
   };
 
-  const renderTypeButton = (blockType, label) => (
-    <TouchableOpacity
-      style={[
-        styles.typeButton,
-        type === blockType && styles.typeButtonActive,
-      ]}
-      onPress={() => setType(blockType)}
-    >
-      <Text
+  const renderTypeButton = (blockType, label) => {
+    const blockTypeColor = getBlockTypeColor(blockType, colors);
+    const isActive = type === blockType;
+    
+    return (
+      <TouchableOpacity
         style={[
-          styles.typeButtonText,
-          type === blockType && styles.typeButtonTextActive,
+          styles.typeButton,
+          isActive && { backgroundColor: blockTypeColor, borderColor: blockTypeColor },
         ]}
+        onPress={() => setType(blockType)}
       >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
+        <Text
+          style={[
+            styles.typeButtonText,
+            isActive && { color: colors.textLight },
+          ]}
+        >
+          {label}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
   const renderModeButton = (blockMode, label) => (
     <TouchableOpacity

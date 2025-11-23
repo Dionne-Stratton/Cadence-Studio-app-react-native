@@ -12,10 +12,12 @@ import {
   ScrollView,
 } from 'react-native';
 import useStore from '../store';
-import { BlockType, BlockMode, getBlockTimingSummary } from '../types';
+import { BlockType, BlockMode, getBlockTimingSummary, getBlockTypeColor } from '../types';
 import { generateId } from '../utils/id';
+import { useTheme } from '../theme';
 
 export default function AddBlockModal({ visible, onClose, onAddBlock }) {
+  const colors = useTheme();
   const blockTemplates = useStore((state) => state.blockTemplates);
   const addBlockTemplate = useStore((state) => state.addBlockTemplate);
   const [tab, setTab] = useState('library'); // 'library' or 'custom'
@@ -138,16 +140,17 @@ export default function AddBlockModal({ visible, onClose, onAddBlock }) {
       [BlockType.REST]: 'Rest',
       [BlockType.TRANSITION]: 'Transition',
     };
+    const blockTypeColor = getBlockTypeColor(item.type, colors);
 
     return (
       <TouchableOpacity
-        style={styles.libraryItem}
+        style={[styles.libraryItem, { borderLeftWidth: 4, borderLeftColor: blockTypeColor }]}
         onPress={() => handleAddFromLibrary(item)}
       >
         <View style={styles.libraryItemContent}>
           <Text style={styles.libraryItemLabel}>{item.label}</Text>
           <View style={styles.libraryItemMeta}>
-            <Text style={styles.libraryItemType}>
+            <Text style={[styles.libraryItemType, { color: blockTypeColor }]}>
               {typeLabels[item.type] || item.type}
             </Text>
             <Text style={styles.libraryItemTiming}>
@@ -158,6 +161,8 @@ export default function AddBlockModal({ visible, onClose, onAddBlock }) {
       </TouchableOpacity>
     );
   };
+
+  const styles = getStyles(colors);
 
   return (
     <Modal
@@ -276,25 +281,30 @@ export default function AddBlockModal({ visible, onClose, onAddBlock }) {
 
             <Text style={styles.label}>Type *</Text>
             <View style={styles.buttonRow}>
-              {Object.values(BlockType).map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  style={[
-                    styles.typeButton,
-                    customType === type && styles.typeButtonActive,
-                  ]}
-                  onPress={() => setCustomType(type)}
-                >
-                  <Text
+              {Object.values(BlockType).map((type) => {
+                const blockTypeColor = getBlockTypeColor(type, colors);
+                const isActive = customType === type;
+                
+                return (
+                  <TouchableOpacity
+                    key={type}
                     style={[
-                      styles.typeButtonText,
-                      customType === type && styles.typeButtonTextActive,
+                      styles.typeButton,
+                      isActive && { backgroundColor: blockTypeColor, borderColor: blockTypeColor },
                     ]}
+                    onPress={() => setCustomType(type)}
                   >
-                    {type.charAt(0).toUpperCase() + type.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[
+                        styles.typeButtonText,
+                        isActive && { color: colors.textLight },
+                      ]}
+                    >
+                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             <Text style={styles.label}>Mode *</Text>
@@ -418,7 +428,7 @@ export default function AddBlockModal({ visible, onClose, onAddBlock }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
@@ -508,10 +518,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   libraryItem: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.cardBackground,
     padding: 16,
+    paddingLeft: 12, // Account for border
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: colors.borderLight,
   },
   libraryItemContent: {
     flex: 1,
@@ -519,7 +530,7 @@ const styles = StyleSheet.create({
   libraryItemLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 4,
   },
   libraryItemMeta: {
@@ -528,7 +539,7 @@ const styles = StyleSheet.create({
   },
   libraryItemType: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
   },
   libraryItemTiming: {
     fontSize: 14,
