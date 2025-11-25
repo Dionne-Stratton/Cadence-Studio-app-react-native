@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import useStore from '../store';
 import { getSessionTotalDuration, formatTime } from '../types';
@@ -20,7 +19,6 @@ import {
 import { useTheme } from '../theme';
 
 export default function HomeScreen() {
-  const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const colors = useTheme();
   
@@ -108,7 +106,7 @@ export default function HomeScreen() {
   const styles = getStyles(colors);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}

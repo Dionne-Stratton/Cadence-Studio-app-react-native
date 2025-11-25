@@ -8,15 +8,12 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import useStore from '../store';
 import { sessionSharingService } from '../services/sessionSharing';
 import { useTheme } from '../theme';
 
 export default function SettingsScreen({ navigation }) {
-  const [safeAreaKey, setSafeAreaKey] = React.useState(0);
-  const insets = useSafeAreaInsets();
   const colors = useTheme();
   const settings = useStore((state) => state.settings);
   const updateSettings = useStore((state) => state.updateSettings);
@@ -27,14 +24,6 @@ export default function SettingsScreen({ navigation }) {
   const blockTemplates = useStore((state) => state.blockTemplates);
   const sessionTemplates = useStore((state) => state.sessionTemplates);
   
-  // Force recalculation when screen comes back into focus (after modal closes)
-  useFocusEffect(
-    React.useCallback(() => {
-      // Force re-render to recalculate safe areas after returning from modal
-      setSafeAreaKey(prev => prev + 1);
-      return () => {};
-    }, [])
-  );
 
   const handlePreCountdownChange = (seconds) => {
     updateSettings({ preCountdownSeconds: seconds });
@@ -241,7 +230,7 @@ export default function SettingsScreen({ navigation }) {
   );
 
   return (
-    <View key={safeAreaKey} style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
       {/* Pre-countdown Settings */}
       {renderSettingSection('Pre-countdown', (

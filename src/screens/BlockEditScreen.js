@@ -18,22 +18,37 @@ import ProUpgradeModal from '../components/ProUpgradeModal';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function BlockEditScreen({ navigation, route }) {
-  const { blockId } = route.params || {};
+  const { blockId, blockInstanceId, sessionId, blockIndex } = route.params || {};
   const colors = useTheme();
   const blockTemplates = useStore((state) => state.blockTemplates);
+  const sessionTemplates = useStore((state) => state.sessionTemplates);
   const settings = useStore((state) => state.settings);
   const addBlockTemplate = useStore((state) => state.addBlockTemplate);
   const updateBlockTemplate = useStore((state) => state.updateBlockTemplate);
+  const updateSessionTemplate = useStore((state) => state.updateSessionTemplate);
   const updateSettings = useStore((state) => state.updateSettings);
 
-  const isEditing = blockId !== null && blockId !== undefined;
-  const existingBlock = isEditing
-    ? blockTemplates.find((b) => b.id === blockId)
-    : null;
+  // Determine if we're editing a library template or a session instance
+  const isEditingLibraryTemplate = blockId !== null && blockId !== undefined;
+  const isEditingSessionInstance = blockInstanceId !== null && blockInstanceId !== undefined && sessionId !== null && sessionId !== undefined;
+  
+  // Get the existing block - either from library or from session
+  // Use useMemo to recompute when dependencies change
+  const existingBlock = React.useMemo(() => {
+    if (isEditingLibraryTemplate) {
+      return blockTemplates.find((b) => b.id === blockId) || null;
+    } else if (isEditingSessionInstance) {
+      const session = sessionTemplates.find((s) => s.id === sessionId);
+      return session?.items?.find((item) => item.id === blockInstanceId) || null;
+    }
+    return null;
+  }, [isEditingLibraryTemplate, isEditingSessionInstance, blockId, blockInstanceId, sessionId, blockTemplates, sessionTemplates]);
+  
+  const isEditing = isEditingLibraryTemplate || isEditingSessionInstance;
 
-  const [label, setLabel] = useState(existingBlock?.label || '');
-  const [category, setCategory] = useState(existingBlock?.category || 'Uncategorized');
-  const [mode, setMode] = useState(existingBlock?.mode || BlockMode.DURATION);
+  const [label, setLabel] = useState('');
+  const [category, setCategory] = useState('Uncategorized');
+  const [mode, setMode] = useState(BlockMode.DURATION);
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [proModalVisible, setProModalVisible] = useState(false);
@@ -52,32 +67,56 @@ export default function BlockEditScreen({ navigation, route }) {
   const isCustomCategory = (cat) => {
     return !BUILT_IN_CATEGORIES.includes(cat);
   };
-  const [minutes, setMinutes] = useState(
-    existingBlock?.mode === BlockMode.DURATION
-      ? Math.floor((existingBlock.durationSeconds || 0) / 60)
-      : 0
-  );
-  const [seconds, setSeconds] = useState(
-    existingBlock?.mode === BlockMode.DURATION
-      ? (existingBlock.durationSeconds || 0) % 60
-      : 30
-  );
-  const [reps, setReps] = useState(existingBlock?.reps || 10);
-  const [perRepSeconds, setPerRepSeconds] = useState(
-    existingBlock?.perRepSeconds || 5
-  );
-  const [notes, setNotes] = useState(existingBlock?.notes || '');
+  
+  const [minutes, setMinutes] = useState(0);
+  const [seconds, setSeconds] = useState(30);
+  const [reps, setReps] = useState(10);
+  const [perRepSeconds, setPerRepSeconds] = useState(5);
+  const [notes, setNotes] = useState('');
+  
+  // Initialize and update state when existingBlock changes
+  useEffect(() => {
+    if (existingBlock) {
+      setLabel(existingBlock.label || '');
+      setCategory(existingBlock.category || 'Uncategorized');
+      setMode(existingBlock.mode || BlockMode.DURATION);
+      if (existingBlock.mode === BlockMode.DURATION) {
+        setMinutes(Math.floor((existingBlock.durationSeconds || 0) / 60));
+        setSeconds((existingBlock.durationSeconds || 0) % 60);
+      } else {
+        setReps(existingBlock.reps || 10);
+        setPerRepSeconds(existingBlock.perRepSeconds || 5);
+      }
+      setNotes(existingBlock.notes || '');
+    }
+  }, [existingBlock]);
+  const [showUpdateAllModal, setShowUpdateAllModal] = useState(false);
+  const [pendingBlockData, setPendingBlockData] = useState(null);
   const styles = getStyles(colors);
 
+  // Update header title based on context
   useEffect(() => {
+    let title = 'Add Activity';
+    if (isEditingLibraryTemplate) {
+      title = 'Edit Activity';
+    } else if (isEditingSessionInstance) {
+      const blockTypeLabel = existingBlock?.type === BlockType.REST 
+        ? 'Rest' 
+        : existingBlock?.type === BlockType.TRANSITION 
+        ? 'Transition' 
+        : 'Activity';
+      title = `Edit ${blockTypeLabel}`;
+    }
+    
     navigation.setOptions({
+      title,
       headerRight: () => (
         <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
           <Text style={styles.saveButtonText}>Save</Text>
         </TouchableOpacity>
       ),
     });
-  }, [label, category, mode, minutes, seconds, reps, perRepSeconds, notes, styles]);
+  }, [isEditingLibraryTemplate, isEditingSessionInstance, existingBlock?.type, label, category, mode, minutes, seconds, reps, perRepSeconds, notes, styles]);
 
   const handleSave = async () => {
     // Validation
@@ -112,8 +151,10 @@ export default function BlockEditScreen({ navigation, route }) {
 
     const blockData = {
       label: label.trim(),
-      type: BlockType.ACTIVITY, // Always activity for templates
-      category: category === 'Uncategorized' ? null : category,
+      type: isEditingSessionInstance ? existingBlock?.type : BlockType.ACTIVITY, // Keep existing type for session instances
+      category: (isEditingSessionInstance && existingBlock?.type !== BlockType.ACTIVITY) 
+        ? null // Rest and Transition don't have categories
+        : (category === 'Uncategorized' ? null : category),
       mode,
       ...(mode === BlockMode.DURATION
         ? { durationSeconds }
@@ -122,9 +163,47 @@ export default function BlockEditScreen({ navigation, route }) {
     };
 
     try {
-      if (isEditing) {
+      if (isEditingLibraryTemplate) {
+        // Editing a library template - normal flow
         await updateBlockTemplate(blockId, blockData);
+        navigation.goBack();
+      } else if (isEditingSessionInstance) {
+        // Editing a session instance
+        const session = sessionTemplates.find((s) => s.id === sessionId);
+        if (!session) {
+          Alert.alert('Error', 'Session not found.');
+          return;
+        }
+
+        // Check if this activity appears multiple times in the session
+        // We need to check based on what we're matching:
+        // - For activities with templateId: match by templateId
+        // - For rest/transition or activities without templateId: match by original label
+        const originalTemplateId = existingBlock?.templateId;
+        const originalLabel = existingBlock?.label;
+        
+        const matchingInstances = session.items.filter((item) => {
+          if (item.id === blockInstanceId) return false; // Don't count the one we're editing
+          
+          // For activities with templateId, match by templateId
+          if (item.type === BlockType.ACTIVITY && originalTemplateId) {
+            return item.templateId === originalTemplateId;
+          }
+          
+          // For rest/transition, or activities without templateId, match by original label
+          return item.label === originalLabel;
+        });
+
+        if (matchingInstances.length > 0) {
+          // Multiple instances found - ask user what to do
+          setPendingBlockData(blockData);
+          setShowUpdateAllModal(true);
+        } else {
+          // Only one instance - just update it
+          await updateSessionInstance(blockData, false);
+        }
       } else {
+        // Creating new library template
         // Check activity limit for free users when creating new activity
         const activities = blockTemplates.filter(b => b.type === BlockType.ACTIVITY);
         if (!settings.isProUser && activities.length >= 20) {
@@ -132,11 +211,90 @@ export default function BlockEditScreen({ navigation, route }) {
           return;
         }
         await addBlockTemplate(blockData);
+        navigation.goBack();
       }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to save. Please try again.');
+      console.error(error);
+    }
+  };
+
+  const updateSessionInstance = async (blockData, updateAll) => {
+    try {
+      const session = sessionTemplates.find((s) => s.id === sessionId);
+      if (!session) {
+        Alert.alert('Error', 'Session not found.');
+        return;
+      }
+
+      const updatedItems = [...session.items];
+      
+      // Store original values for matching (use existingBlock which was loaded at start)
+      const originalTemplateId = existingBlock?.templateId;
+      const originalLabel = existingBlock?.label;
+      
+      if (updateAll) {
+        // Update all matching instances in the session
+        updatedItems.forEach((item, idx) => {
+          // Check if this is a matching instance
+          let isMatching = false;
+          
+          if (item.id === blockInstanceId) {
+            // The one being edited - always update
+            isMatching = true;
+          } else if (item.type === BlockType.ACTIVITY && originalTemplateId) {
+            // Activities with templateId - match by templateId
+            isMatching = item.templateId === originalTemplateId;
+          } else {
+            // Rest/transition or activities without templateId - match by original label
+            isMatching = item.label === originalLabel;
+          }
+          
+          if (isMatching) {
+            updatedItems[idx] = {
+              ...item,
+              ...blockData,
+              // Preserve id and templateId
+              id: item.id,
+              templateId: item.templateId,
+            };
+          }
+        });
+      } else {
+        // Update only the one instance being edited
+        const index = updatedItems.findIndex((item) => item.id === blockInstanceId);
+        if (index !== -1) {
+          updatedItems[index] = {
+            ...updatedItems[index],
+            ...blockData,
+            // Preserve id and templateId
+            id: updatedItems[index].id,
+            templateId: updatedItems[index].templateId,
+          };
+        }
+      }
+
+      await updateSessionTemplate(sessionId, { items: updatedItems });
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Error', 'Failed to save activity. Please try again.');
+      Alert.alert('Error', 'Failed to update session. Please try again.');
       console.error(error);
+    }
+  };
+
+  const handleUpdateAll = async () => {
+    setShowUpdateAllModal(false);
+    if (pendingBlockData) {
+      await updateSessionInstance(pendingBlockData, true);
+      setPendingBlockData(null);
+    }
+  };
+
+  const handleUpdateOne = async () => {
+    setShowUpdateAllModal(false);
+    if (pendingBlockData) {
+      await updateSessionInstance(pendingBlockData, false);
+      setPendingBlockData(null);
     }
   };
 
@@ -213,57 +371,59 @@ export default function BlockEditScreen({ navigation, route }) {
           />
         </View>
 
-        {/* Category Selection */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Category *</Text>
-          <View style={styles.categoryContainer}>
-            {allCategories.map((cat) => {
-              const isCustom = isCustomCategory(cat);
-              const isLocked = isCustom && !settings.isProUser;
-              return (
-                <TouchableOpacity
-                  key={cat}
-                  style={[
-                    styles.categoryChip,
-                    category === cat && styles.categoryChipActive,
-                    isLocked && styles.categoryChipLocked,
-                  ]}
-                  onPress={() => handleCategorySelect(cat)}
-                  disabled={isLocked}
-                >
-                  <Text
+        {/* Category Selection - Only for activities */}
+        {(!isEditingSessionInstance || existingBlock?.type === BlockType.ACTIVITY) && (
+          <View style={styles.section}>
+            <Text style={styles.label}>Category *</Text>
+            <View style={styles.categoryContainer}>
+              {allCategories.map((cat) => {
+                const isCustom = isCustomCategory(cat);
+                const isLocked = isCustom && !settings.isProUser;
+                return (
+                  <TouchableOpacity
+                    key={cat}
                     style={[
-                      styles.categoryChipText,
-                      category === cat && styles.categoryChipTextActive,
-                      isLocked && styles.categoryChipTextLocked,
+                      styles.categoryChip,
+                      category === cat && styles.categoryChipActive,
+                      isLocked && styles.categoryChipLocked,
                     ]}
+                    onPress={() => handleCategorySelect(cat)}
+                    disabled={isLocked}
                   >
-                    {cat}
-                    {isLocked && ' 🔒'}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+                    <Text
+                      style={[
+                        styles.categoryChipText,
+                        category === cat && styles.categoryChipTextActive,
+                        isLocked && styles.categoryChipTextLocked,
+                      ]}
+                    >
+                      {cat}
+                      {isLocked && ' 🔒'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {settings.isProUser && (
+              <TouchableOpacity
+                style={styles.addCategoryButton}
+                onPress={handleAddCategory}
+              >
+                <Text style={styles.addCategoryButtonText}>+ Add Category</Text>
+              </TouchableOpacity>
+            )}
+            {!settings.isProUser && (
+              <TouchableOpacity
+                style={[styles.addCategoryButton, styles.addCategoryButtonDisabled]}
+                disabled
+              >
+                <Text style={[styles.addCategoryButtonText, styles.addCategoryButtonTextDisabled]}>
+                  🔒 + Add Category (Pro)
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
-          {settings.isProUser && (
-            <TouchableOpacity
-              style={styles.addCategoryButton}
-              onPress={handleAddCategory}
-            >
-              <Text style={styles.addCategoryButtonText}>+ Add Category</Text>
-            </TouchableOpacity>
-          )}
-          {!settings.isProUser && (
-            <TouchableOpacity
-              style={[styles.addCategoryButton, styles.addCategoryButtonDisabled]}
-              disabled
-            >
-              <Text style={[styles.addCategoryButtonText, styles.addCategoryButtonTextDisabled]}>
-                🔒 + Add Category (Pro)
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        )}
 
         {/* Mode Selection */}
         <View style={styles.section}>
@@ -396,6 +556,78 @@ export default function BlockEditScreen({ navigation, route }) {
         onClose={() => setProModalVisible(false)}
         limitType="customCategory"
       />
+
+      {/* Update All Instances Modal */}
+      <Modal
+        visible={showUpdateAllModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowUpdateAllModal(false);
+          setPendingBlockData(null);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Update All Instances?</Text>
+            {(() => {
+              const session = sessionTemplates.find((s) => s.id === sessionId);
+              if (!session) {
+                return (
+                  <Text style={styles.modalMessage}>
+                    Do you want to update all instances in this session, or only this one?
+                  </Text>
+                );
+              }
+              
+              const matchingCount = session.items.filter((item) => {
+                if (item.id === blockInstanceId) return false; // Don't count the one being edited
+                if (item.type === BlockType.ACTIVITY && existingBlock?.templateId) {
+                  return item.templateId === existingBlock.templateId;
+                }
+                return item.label === existingBlock?.label;
+              }).length;
+              
+              const totalInstances = matchingCount + 1; // +1 for the one being edited
+              const blockTypeLabel = existingBlock?.type === BlockType.ACTIVITY ? 'activity' : existingBlock?.type === BlockType.REST ? 'rest' : 'transition';
+              
+              return (
+                <>
+                  <Text style={styles.modalMessage}>
+                    This {blockTypeLabel} appears {totalInstances} time{totalInstances > 1 ? 's' : ''} in this session.
+                  </Text>
+                  <Text style={styles.modalMessage}>
+                    Do you want to update all instances in this session, or only this one?
+                  </Text>
+                </>
+              );
+            })()}
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonCancel]}
+                onPress={() => {
+                  setShowUpdateAllModal(false);
+                  setPendingBlockData(null);
+                }}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonSecondary]}
+                onPress={handleUpdateOne}
+              >
+                <Text style={[styles.modalButtonText, { color: colors.text }]}>This One</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonSave]}
+                onPress={handleUpdateAll}
+              >
+                <Text style={[styles.modalButtonText, styles.modalButtonTextSave]}>All Instances</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -507,6 +739,12 @@ const getStyles = (colors) => StyleSheet.create({
     color: colors.text,
     marginBottom: 16,
   },
+  modalMessage: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginBottom: 16,
+    lineHeight: 22,
+  },
   modalInput: {
     backgroundColor: colors.background,
     borderRadius: 8,
@@ -529,6 +767,11 @@ const getStyles = (colors) => StyleSheet.create({
   },
   modalButtonCancel: {
     backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modalButtonSecondary: {
+    backgroundColor: colors.cardBackground,
     borderWidth: 1,
     borderColor: colors.border,
   },

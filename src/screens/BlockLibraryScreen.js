@@ -10,7 +10,6 @@ import {
   TextInput,
   ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import useStore from '../store';
 import { BlockType, getBlockTimingSummary, getBlockTypeColor, BUILT_IN_CATEGORIES } from '../types';
 import { useTheme } from '../theme';
@@ -127,7 +126,7 @@ export default function BlockLibraryScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={styles.container}>
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <TextInput
@@ -235,7 +234,7 @@ export default function BlockLibraryScreen({ navigation }) {
           navigation.getParent()?.navigate('Settings', { screen: 'GoPro' });
         }}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

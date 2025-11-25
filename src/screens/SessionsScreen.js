@@ -12,7 +12,6 @@ import {
   ActionSheetIOS,
   TextInput,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import useStore from '../store';
 import { getSessionTotalDuration, formatTime } from '../types';
@@ -21,8 +20,6 @@ import { useTheme } from '../theme';
 import ProUpgradeModal from '../components/ProUpgradeModal';
 
 export default function SessionsScreen({ navigation }) {
-  const [safeAreaKey, setSafeAreaKey] = React.useState(0);
-  const insets = useSafeAreaInsets();
   const colors = useTheme();
   const sessionTemplates = useStore((state) => state.sessionTemplates);
   const deleteSessionTemplate = useStore((state) => state.deleteSessionTemplate);
@@ -37,14 +34,6 @@ export default function SessionsScreen({ navigation }) {
   const [proModalLimitType, setProModalLimitType] = useState(null);
   const settings = useStore((state) => state.settings);
   
-  // Force recalculation when screen comes back into focus (after modal closes)
-  useFocusEffect(
-    React.useCallback(() => {
-      // Force re-render to recalculate safe areas after returning from modal
-      setSafeAreaKey(prev => prev + 1);
-      return () => {};
-    }, [])
-  );
 
   useEffect(() => {
     // Load data on mount
@@ -231,7 +220,7 @@ export default function SessionsScreen({ navigation }) {
   };
 
   return (
-    <View key={safeAreaKey} style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
       {/* Free Plan Banner */}
       {!settings.isProUser && (
         <View style={styles.freeBanner}>

@@ -62,6 +62,13 @@ function SessionsStack() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="BlockEdit"
+        component={BlockEditScreen}
+        options={({ route }) => ({
+          title: route.params?.blockId ? "Edit Activity" : "Add Activity",
+        })}
+      />
     </Stack.Navigator>
   );
 }
@@ -92,7 +99,6 @@ function LibraryStack() {
         component={BlockEditScreen}
         options={({ route }) => ({
           title: route.params?.blockId ? "Edit Activity" : "Add Activity",
-          headerStatusBarHeight: 10,
         })}
       />
     </Stack.Navigator>

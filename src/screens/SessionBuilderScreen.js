@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -66,6 +67,21 @@ export default function SessionBuilderScreen({ navigation, route }) {
       setScheduledDaysOfWeek([...scheduledDaysOfWeek, dayValue].sort());
     }
   };
+
+  // Reload session from store when screen comes back into focus (e.g., after editing a block)
+  useFocusEffect(
+    React.useCallback(() => {
+      if (sessionId) {
+        const currentSession = sessionTemplates.find((s) => s.id === sessionId);
+        if (currentSession) {
+          // Update local state with latest from store
+          setItems(currentSession.items ? [...currentSession.items] : []);
+          setSessionName(currentSession.name || 'New Session');
+          setScheduledDaysOfWeek(currentSession.scheduledDaysOfWeek || []);
+        }
+      }
+    }, [sessionId, sessionTemplates])
+  );
 
   useEffect(() => {
     navigation.setOptions({
@@ -146,10 +162,18 @@ export default function SessionBuilderScreen({ navigation, route }) {
 
   const handleDuplicateItem = (index) => {
     const item = items[index];
+    // Explicitly copy all fields to ensure nothing is missed
     const duplicated = {
-      ...item,
-      id: generateId(),
-      templateId: item.templateId, // Keep the same templateId if it exists
+      id: generateId(), // New ID for the duplicate
+      templateId: item.templateId || null, // Keep the same templateId if it exists
+      label: item.label || '',
+      type: item.type || BlockType.ACTIVITY,
+      category: item.category || null,
+      mode: item.mode || BlockMode.DURATION,
+      durationSeconds: item.durationSeconds || 0,
+      reps: item.reps || 0,
+      perRepSeconds: item.perRepSeconds || 0,
+      notes: item.notes || null,
     };
     const newItems = [...items];
     newItems.splice(index + 1, 0, duplicated);
@@ -157,14 +181,16 @@ export default function SessionBuilderScreen({ navigation, route }) {
   };
 
   const handleEditItem = (index) => {
-    // For simplicity, we'll show a simple Alert with input simulation
-    // In a real app, you'd use a modal with TextInput
     const item = items[index];
-    Alert.alert(
-      'Edit Block',
-      'Block editing with label override will be implemented in the next milestone. For now, you can delete and re-add the block.',
-      [{ text: 'OK' }]
-    );
+    // Navigate to BlockEditScreen with session context
+    // blockInstanceId is the id of the BlockInstance in the session
+    // sessionId identifies which session we're editing
+    // blockIndex is the position in the session
+    navigation.navigate('BlockEdit', {
+      blockInstanceId: item.id,
+      sessionId: sessionId,
+      blockIndex: index,
+    });
   };
 
   const handleMoveUp = (index) => {
@@ -414,36 +440,37 @@ export default function SessionBuilderScreen({ navigation, route }) {
 const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
   },
   section: {
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: colors.cardBackground,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: colors.borderLight,
   },
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 8,
   },
   description: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     marginBottom: 12,
     lineHeight: 20,
   },
   input: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: colors.border,
+    color: colors.text,
   },
   daysContainer: {
     flexDirection: 'row',

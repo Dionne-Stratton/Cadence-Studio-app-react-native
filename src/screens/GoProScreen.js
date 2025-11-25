@@ -7,13 +7,11 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme';
 import useStore from '../store';
 
 export default function GoProScreen({ navigation }) {
-  const insets = useSafeAreaInsets();
   const colors = useTheme();
   const settings = useStore((state) => state.settings);
   const updateSettings = useStore((state) => state.updateSettings);
@@ -55,7 +53,7 @@ export default function GoProScreen({ navigation }) {
   ];
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
