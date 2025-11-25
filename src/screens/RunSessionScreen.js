@@ -58,33 +58,23 @@ export default function RunSessionScreen({ navigation, route }) {
   const lastWarningTime = useRef(null);
   const prevIndexRef = useRef(0);
 
-  // Function to navigate back to the previous screen
+  // Function to navigate back when a session ends or is stopped
   const navigateBack = () => {
-    if (returnTo) {
-      // Navigate to the specified return screen
-      if (returnTo.tab) {
-        // Navigate to a tab (e.g., 'Home')
-        // First navigate to SessionsList to clean up the stack, then switch tabs
-        navigation.navigate("SessionsList");
-        // Use setTimeout to ensure stack is cleaned before tab switch
+    // 1) Always clean up the Sessions stack so RunSession isn't left on top
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "SessionsList" }],
+    });
+
+    // 2) If this run was started from a specific tab (e.g. Home via Quick Start),
+    //    switch back to that tab after resetting the stack
+    if (returnTo?.tab) {
+      const parentNav = navigation.getParent();
+      if (parentNav) {
         setTimeout(() => {
-          navigation.getParent()?.navigate(returnTo.tab);
-        }, 100);
-      } else if (returnTo.screen) {
-        // Navigate to a screen within the current stack
-        if (returnTo.screen === "SessionsList") {
-          // Pop to top (SessionsList) instead of reset
-          navigation.popToTop();
-        } else {
-          navigation.navigate(returnTo.screen, returnTo.params || {});
-        }
-      } else {
-        // Fallback: pop to top
-        navigation.popToTop();
+          parentNav.navigate(returnTo.tab);
+        }, 0);
       }
-    } else {
-      // Default behavior: pop to top (SessionsList)
-      navigation.popToTop();
     }
   };
 
