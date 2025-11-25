@@ -6,9 +6,11 @@ import {
   TouchableOpacity,
   Modal,
   Alert,
+  BackHandler,
 } from "react-native";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import useStore from "../store";
 import {
   BlockType,
@@ -25,6 +27,7 @@ import { notificationService } from "../services/notifications";
 export default function RunSessionScreen({ navigation, route }) {
   const { sessionId, returnTo } = route.params || {};
   const colors = useTheme();
+  const insets = useSafeAreaInsets();
   const sessionTemplates = useStore((state) => state.sessionTemplates);
   const settings = useStore((state) => state.settings);
   const runningSession = useStore((state) => state.runningSession);
@@ -316,6 +319,23 @@ export default function RunSessionScreen({ navigation, route }) {
     ]);
   };
 
+  // Handle device back button - stop the session
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        // Only handle back button if there's a running session
+        if (runningSession && !isSessionComplete) {
+          handleStopSession();
+          return true; // Prevent default back behavior
+        }
+        return false; // Allow default back behavior
+      }
+    );
+
+    return () => backHandler.remove();
+  }, [runningSession, isSessionComplete, handleStopSession]);
+
   const handleComplete = () => {
     notificationService.cancelAllNotifications();
     setShowCompleteModal(false);
@@ -396,6 +416,9 @@ export default function RunSessionScreen({ navigation, route }) {
       }
     }
   };
+
+  // Define styles early so they're available for all return statements
+  const styles = getStyles(insets);
 
   if (
     !runningSession ||
@@ -499,7 +522,12 @@ export default function RunSessionScreen({ navigation, route }) {
       </View>
 
       {/* Controls */}
-      <View style={styles.controls}>
+      <View
+        style={[
+          styles.controls,
+          { paddingBottom: Math.max(insets.bottom, 16) },
+        ]}
+      >
         <TouchableOpacity
           style={[styles.controlButton, styles.previousButton]}
           onPress={handlePrevious}
@@ -572,193 +600,195 @@ export default function RunSessionScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#1a1a1a",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingTop: 16,
-    paddingBottom: 16,
-    paddingHorizontal: 16,
-    backgroundColor: "#2a2a2a",
-  },
-  stopButton: {
-    padding: 8,
-    minWidth: 60,
-  },
-  stopButtonText: {
-    color: "#ff5252",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  headerContent: {
-    flex: 1,
-    alignItems: "center",
-  },
-  sessionName: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#fff",
-    marginBottom: 8,
-  },
-  progressBar: {
-    width: "100%",
-    height: 4,
-    backgroundColor: "#444",
-    borderRadius: 2,
-    overflow: "hidden",
-    marginBottom: 4,
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#4A7C9E",
-    borderRadius: 2,
-  },
-  progressText: {
-    fontSize: 12,
-    color: "#999",
-  },
-  mainArea: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 32,
-  },
-  blockLabel: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#fff",
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  blockSubtext: {
-    fontSize: 16,
-    color: "#999",
-    textAlign: "center",
-    marginBottom: 40,
-  },
-  timerContainer: {
-    alignItems: "center",
-    marginBottom: 40,
-  },
-  timerText: {
-    fontSize: 80,
-    fontWeight: "bold",
-    color: "#4A7C9E",
-    fontFamily: "monospace",
-  },
-  nextBlockContainer: {
-    marginTop: 20,
-  },
-  nextBlockLabel: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-  },
-  controls: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    padding: 16,
-    backgroundColor: "#2a2a2a",
-    gap: 12,
-  },
-  controlButton: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 8,
-    alignItems: "center",
-    backgroundColor: "#3a3a3a",
-  },
-  previousButton: {
-    backgroundColor: "#3a3a3a",
-  },
-  playPauseButton: {
-    backgroundColor: "#4A7C9E",
-  },
-  nextButton: {
-    backgroundColor: "#3a3a3a",
-  },
-  controlButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  controlButtonTextDisabled: {
-    color: "#666",
-    opacity: 0.5,
-  },
-  preCountdownContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  preCountdownText: {
-    fontSize: 120,
-    fontWeight: "bold",
-    color: "#4A7C9E",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.8)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    backgroundColor: "#2a2a2a",
-    borderRadius: 16,
-    padding: 32,
-    alignItems: "center",
-    minWidth: 280,
-  },
-  completeTitle: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 16,
-    textAlign: "center",
-  },
-  completeText: {
-    fontSize: 18,
-    color: "#fff",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  completeSubtext: {
-    fontSize: 14,
-    color: "#999",
-    marginBottom: 24,
-    textAlign: "center",
-  },
-  completeButton: {
-    backgroundColor: "#4A7C9E",
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-  },
-  completeButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  errorText: {
-    fontSize: 18,
-    color: "#fff",
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  backButton: {
-    backgroundColor: "#4A7C9E",
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    alignSelf: "center",
-  },
-  backButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-});
+const getStyles = (insets) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: "#1a1a1a",
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingTop: Math.max(insets.top, 16),
+      paddingBottom: 16,
+      paddingHorizontal: 16,
+      backgroundColor: "#2a2a2a",
+    },
+    stopButton: {
+      padding: 8,
+      minWidth: 60,
+    },
+    stopButtonText: {
+      color: "#ff5252",
+      fontSize: 16,
+      fontWeight: "600",
+    },
+    headerContent: {
+      flex: 1,
+      alignItems: "center",
+    },
+    sessionName: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: "#fff",
+      marginBottom: 8,
+    },
+    progressBar: {
+      width: "100%",
+      height: 4,
+      backgroundColor: "#444",
+      borderRadius: 2,
+      overflow: "hidden",
+      marginBottom: 4,
+    },
+    progressFill: {
+      height: "100%",
+      backgroundColor: "#4A7C9E",
+      borderRadius: 2,
+    },
+    progressText: {
+      fontSize: 12,
+      color: "#999",
+    },
+    mainArea: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 32,
+    },
+    blockLabel: {
+      fontSize: 32,
+      fontWeight: "bold",
+      color: "#fff",
+      textAlign: "center",
+      marginBottom: 12,
+    },
+    blockSubtext: {
+      fontSize: 16,
+      color: "#999",
+      textAlign: "center",
+      marginBottom: 40,
+    },
+    timerContainer: {
+      alignItems: "center",
+      marginBottom: 40,
+    },
+    timerText: {
+      fontSize: 80,
+      fontWeight: "bold",
+      color: "#4A7C9E",
+      fontFamily: "monospace",
+    },
+    nextBlockContainer: {
+      marginTop: 20,
+    },
+    nextBlockLabel: {
+      fontSize: 14,
+      color: "#666",
+      textAlign: "center",
+    },
+    controls: {
+      flexDirection: "row",
+      justifyContent: "space-around",
+      paddingTop: 16,
+      paddingHorizontal: 16,
+      backgroundColor: "#2a2a2a",
+      gap: 12,
+    },
+    controlButton: {
+      flex: 1,
+      paddingVertical: 16,
+      borderRadius: 8,
+      alignItems: "center",
+      backgroundColor: "#3a3a3a",
+    },
+    previousButton: {
+      backgroundColor: "#3a3a3a",
+    },
+    playPauseButton: {
+      backgroundColor: "#4A7C9E",
+    },
+    nextButton: {
+      backgroundColor: "#3a3a3a",
+    },
+    controlButtonText: {
+      color: "#fff",
+      fontSize: 16,
+      fontWeight: "600",
+    },
+    controlButtonTextDisabled: {
+      color: "#666",
+      opacity: 0.5,
+    },
+    preCountdownContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    preCountdownText: {
+      fontSize: 120,
+      fontWeight: "bold",
+      color: "#4A7C9E",
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.8)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    modalContent: {
+      backgroundColor: "#2a2a2a",
+      borderRadius: 16,
+      padding: 32,
+      alignItems: "center",
+      minWidth: 280,
+    },
+    completeTitle: {
+      fontSize: 28,
+      fontWeight: "bold",
+      color: "#fff",
+      marginBottom: 16,
+      textAlign: "center",
+    },
+    completeText: {
+      fontSize: 18,
+      color: "#fff",
+      marginBottom: 8,
+      textAlign: "center",
+    },
+    completeSubtext: {
+      fontSize: 14,
+      color: "#999",
+      marginBottom: 24,
+      textAlign: "center",
+    },
+    completeButton: {
+      backgroundColor: "#4A7C9E",
+      borderRadius: 8,
+      paddingVertical: 12,
+      paddingHorizontal: 32,
+    },
+    completeButtonText: {
+      color: "#fff",
+      fontSize: 16,
+      fontWeight: "600",
+    },
+    errorText: {
+      fontSize: 18,
+      color: "#fff",
+      textAlign: "center",
+      marginBottom: 20,
+    },
+    backButton: {
+      backgroundColor: "#4A7C9E",
+      borderRadius: 8,
+      paddingVertical: 12,
+      paddingHorizontal: 32,
+      alignSelf: "center",
+    },
+    backButtonText: {
+      color: "#fff",
+      fontSize: 16,
+      fontWeight: "600",
+    },
+  });

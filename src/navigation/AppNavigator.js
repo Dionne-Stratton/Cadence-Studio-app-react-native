@@ -1,5 +1,5 @@
 import React from "react";
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, getFocusedRouteNameFromRoute } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -142,34 +142,40 @@ export default function AppNavigator() {
   return (
     <NavigationContainer>
       <Tab.Navigator
-        screenOptions={({ route }) => ({
-          tabBarIcon: ({ focused, color, size }) => {
-            let iconName;
+        screenOptions={({ route }) => {
+          // Check if RunSession is active by checking the focused route name
+          const routeName = getFocusedRouteNameFromRoute(route);
+          const isRunSessionActive = routeName === 'RunSession';
 
-            if (route.name === "Home") {
-              iconName = focused ? "home" : "home-outline";
-            } else if (route.name === "Sessions") {
-              iconName = focused ? "list" : "list-outline";
-            } else if (route.name === "Library") {
-              iconName = focused ? "library" : "library-outline";
-            } else if (route.name === "Settings") {
-              iconName = focused ? "settings" : "settings-outline";
-            }
+          return {
+            tabBarIcon: ({ focused, color, size }) => {
+              let iconName;
 
-            return <Ionicons name={iconName} size={size} color={color} />;
-          },
-          tabBarActiveTintColor: colors.primary,
-          tabBarInactiveTintColor: colors.textSecondary,
-          headerShown: false,
-          tabBarStyle: {
-            backgroundColor: colors.tabBarBackground,
-            borderTopWidth: 1,
-            borderTopColor: colors.borderLight,
-            paddingBottom: Math.max(insets.bottom, 5),
-            paddingTop: 5,
-            height: 60 + Math.max(insets.bottom, 0),
-          },
-        })}
+              if (route.name === "Home") {
+                iconName = focused ? "home" : "home-outline";
+              } else if (route.name === "Sessions") {
+                iconName = focused ? "list" : "list-outline";
+              } else if (route.name === "Library") {
+                iconName = focused ? "library" : "library-outline";
+              } else if (route.name === "Settings") {
+                iconName = focused ? "settings" : "settings-outline";
+              }
+
+              return <Ionicons name={iconName} size={size} color={color} />;
+            },
+            tabBarActiveTintColor: colors.primary,
+            tabBarInactiveTintColor: colors.textSecondary,
+            headerShown: false,
+            tabBarStyle: isRunSessionActive ? { display: 'none' } : {
+              backgroundColor: colors.tabBarBackground,
+              borderTopWidth: 1,
+              borderTopColor: colors.borderLight,
+              paddingBottom: Math.max(insets.bottom, 5),
+              paddingTop: 5,
+              height: 60 + Math.max(insets.bottom, 0),
+            },
+          };
+        }}
       >
         <Tab.Screen
           name="Home"
@@ -180,6 +186,15 @@ export default function AppNavigator() {
           name="Sessions"
           component={SessionsStack}
           options={{ title: "Sessions" }}
+          listeners={({ navigation, route }) => ({
+            tabPress: (e) => {
+              // Prevent tab press if RunSession is active
+              const routeName = getFocusedRouteNameFromRoute(route);
+              if (routeName === 'RunSession') {
+                e.preventDefault();
+              }
+            },
+          })}
         />
         <Tab.Screen
           name="Library"

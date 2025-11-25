@@ -20,6 +20,7 @@ import AddRestTransitionModal from '../components/AddRestTransitionModal';
 import { useTheme } from '../theme';
 import ProUpgradeModal from '../components/ProUpgradeModal';
 import Toast from '../components/Toast';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function SessionBuilderScreen({ navigation, route }) {
   const { sessionId: routeSessionId } = route.params || {};
@@ -608,21 +609,21 @@ export default function SessionBuilderScreen({ navigation, route }) {
             onPress={() => handleEditItem(index)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Text style={styles.actionButtonText}>Edit</Text>
+            <Ionicons name="pencil" size={18} color={colors.primary} />
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.duplicateButton]}
             onPress={() => handleDuplicateItem(index)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Text style={[styles.actionButtonText, styles.duplicateButtonText]}>Dup</Text>
+            <Ionicons name="copy-outline" size={18} color={colors.info} />
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.deleteButton]}
             onPress={() => handleDeleteItem(index)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Text style={[styles.actionButtonText, styles.deleteButtonText]}>Del</Text>
+            <Ionicons name="close" size={18} color={colors.errorText} />
           </TouchableOpacity>
       </View>
     </View>
@@ -984,6 +985,8 @@ const getStyles = (colors) => StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 6,
     backgroundColor: colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   actionButtonText: {
     fontSize: 12,

@@ -39,43 +39,38 @@ export default function HomeScreen() {
     thisWeekHistory.reduce((sum, entry) => sum + entry.totalDurationSeconds, 0) / 60
   );
   
-  // Quick Start logic
-  const getQuickStartSession = () => {
+  // Quick Start logic - returns array of sessions
+  const getQuickStartSessions = () => {
     // 1. Find sessions scheduled for today
     const scheduledToday = sessionTemplates.filter(session => {
       return session.scheduledDaysOfWeek && session.scheduledDaysOfWeek.includes(todayWeekday);
     });
     
-    // Scenario A: Exactly one scheduled session
-    if (scheduledToday.length === 1) {
-      return { session: scheduledToday[0], reason: 'scheduled' };
-    }
-    
-    // Scenario B: Multiple scheduled sessions
-    if (scheduledToday.length > 1) {
-      // Choose deterministically (alphabetical by name)
-      // Always show a session, even if completed
+    // Scenario A: One or more scheduled sessions
+    if (scheduledToday.length > 0) {
+      // Sort alphabetically for consistent display
       scheduledToday.sort((a, b) => a.name.localeCompare(b.name));
-      return { session: scheduledToday[0], reason: 'scheduled' };
+      return scheduledToday.map(session => ({ session, reason: 'scheduled' }));
     }
     
-    // Scenario C: No scheduled sessions - fall back to most recently completed
+    // Scenario B: No scheduled sessions - fall back to most recently completed
     if (sessionHistory.length > 0) {
       // Find most recent entry whose session still exists
       for (const entry of sessionHistory) {
         if (entry.sessionId) {
           const session = sessionTemplates.find(s => s.id === entry.sessionId);
           if (session) {
-            return { session, reason: 'lastUsed' };
+            return [{ session, reason: 'lastUsed' }];
           }
         }
       }
     }
     
-    return null;
+    return [];
   };
   
-  const quickStartSession = getQuickStartSession();
+  const quickStartSessions = getQuickStartSessions();
+  const hasScheduledSessions = quickStartSessions.length > 0 && quickStartSessions[0].reason === 'scheduled';
   
   // Get recent activity (last 5 entries)
   const recentActivity = sessionHistory
@@ -83,14 +78,14 @@ export default function HomeScreen() {
     .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))
     .slice(0, 5);
   
-  const handleQuickStart = () => {
-    if (!quickStartSession) return;
+  const handleQuickStart = (sessionId) => {
+    if (!sessionId) return;
     
     // Navigate directly to RunSession, with returnTo to come back to Home
     navigation.navigate('Sessions', {
       screen: 'RunSession',
       params: { 
-        sessionId: quickStartSession.session.id,
+        sessionId,
         returnTo: { tab: 'Home' },
       },
     });
@@ -115,20 +110,23 @@ export default function HomeScreen() {
         {/* Quick Start Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Quick Start</Text>
-          {quickStartSession ? (
+          {quickStartSessions.length > 0 ? (
             <View>
-              <TouchableOpacity
-                style={styles.quickStartButton}
-                onPress={handleQuickStart}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.quickStartButtonText}>
-                  Quick start: {quickStartSession.session.name}
-                </Text>
-              </TouchableOpacity>
+              {quickStartSessions.map((item) => (
+                <TouchableOpacity
+                  key={item.session.id}
+                  style={styles.quickStartButton}
+                  onPress={() => handleQuickStart(item.session.id)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.quickStartButtonText}>
+                    Quick start: {item.session.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
               <Text style={styles.quickStartSubtext}>
-                {quickStartSession.reason === 'scheduled' 
-                  ? "Today's scheduled session" 
+                {hasScheduledSessions 
+                  ? `Today's scheduled session${quickStartSessions.length > 1 ? 's' : ''}`
                   : "Last used session"}
               </Text>
             </View>
@@ -268,6 +266,9 @@ const getStyles = (colors) => StyleSheet.create({
     paddingHorizontal: 20,
     alignItems: 'center',
     marginBottom: 8,
+  },
+  quickStartButtonSpacing: {
+    marginBottom: 12,
   },
   quickStartButtonText: {
     color: colors.textLight,
