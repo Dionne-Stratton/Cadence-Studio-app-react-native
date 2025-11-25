@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
@@ -19,15 +19,64 @@ import AddBlockModal from '../components/AddBlockModal';
 import AddRestTransitionModal from '../components/AddRestTransitionModal';
 import { useTheme } from '../theme';
 import ProUpgradeModal from '../components/ProUpgradeModal';
+import Toast from '../components/Toast';
 
 export default function SessionBuilderScreen({ navigation, route }) {
-  const { sessionId } = route.params || {};
+  const { sessionId: routeSessionId } = route.params || {};
   const colors = useTheme();
   const sessionTemplates = useStore((state) => state.sessionTemplates);
   const settings = useStore((state) => state.settings);
   const addSessionTemplate = useStore((state) => state.addSessionTemplate);
   const updateSessionTemplate = useStore((state) => state.updateSessionTemplate);
+  const getSessionDraft = useStore((state) => state.getSessionDraft);
+  const saveSessionDraft = useStore((state) => state.saveSessionDraft);
+  const updateSessionDraft = useStore((state) => state.updateSessionDraft);
+  const deleteSessionDraft = useStore((state) => state.deleteSessionDraft);
   const [proModalVisible, setProModalVisible] = useState(false);
+  const [toastVisible, setToastVisible] = useState(false);
+  const saveTimeoutRef = useRef(null);
+  const hasUnsavedChangesRef = useRef(false);
+  const lastSavedRef = useRef(null); // Track last saved state to prevent redundant saves
+  const isLoadingFromStoreRef = useRef(false); // Flag to prevent autosave during store reload
+
+  // Generate a sessionId for new sessions (if null/undefined)
+  // For new sessions, we need to generate an ID and store it in route params
+  // Use a ref to persist the generated ID across remounts
+  const generatedSessionIdRef = useRef(null);
+  
+  // Determine the sessionId - use route param if provided, otherwise generate/store one
+  let sessionId = routeSessionId;
+  
+  if (sessionId === null || sessionId === undefined) {
+    // For new sessions, check if there's a draft we can use
+    // (This handles the case where the component remounted)
+    const allDrafts = useStore.getState().sessionDrafts || {};
+    const draftEntries = Object.entries(allDrafts);
+    
+    // Find a draft that doesn't have a corresponding saved session
+    const unsavedDraft = draftEntries.find(([draftId, draft]) => {
+      return !sessionTemplates.find(s => s.id === draftId);
+    });
+    
+    if (unsavedDraft) {
+      // Use the existing draft's sessionId
+      sessionId = unsavedDraft[0];
+      // Update route params to include this sessionId for future remounts
+      if (navigation) {
+        navigation.setParams({ sessionId });
+      }
+    } else {
+      // Generate a new sessionId
+      if (!generatedSessionIdRef.current) {
+        generatedSessionIdRef.current = generateId();
+      }
+      sessionId = generatedSessionIdRef.current;
+      // Update route params to include this sessionId
+      if (navigation) {
+        navigation.setParams({ sessionId });
+      }
+    }
+  }
 
   const existingSession =
     sessionId !== null && sessionId !== undefined
@@ -36,15 +85,109 @@ export default function SessionBuilderScreen({ navigation, route }) {
 
   const isEditing = !!existingSession;
 
+  // For unsaved sessions, check if there's a draft in the store
+  const sessionDraft = sessionId && !existingSession ? getSessionDraft(sessionId) : null;
+
+  // Initialize state from existing session or draft
   const [sessionName, setSessionName] = useState(
-    existingSession?.name || 'New Session'
+    existingSession?.name || sessionDraft?.name || 'New Session'
   );
-  const [items, setItems] = useState(
-    existingSession?.items ? [...existingSession.items] : []
-  );
+  const [items, setItems] = useState(() => {
+    if (existingSession?.items) {
+      return [...existingSession.items];
+    }
+    if (sessionDraft?.items) {
+      return [...sessionDraft.items];
+    }
+    return [];
+  });
   const [scheduledDaysOfWeek, setScheduledDaysOfWeek] = useState(
-    existingSession?.scheduledDaysOfWeek || []
+    existingSession?.scheduledDaysOfWeek || sessionDraft?.scheduledDaysOfWeek || []
   );
+
+  // Initialize lastSavedRef when component first loads with an existing session
+  // This prevents false "changes detected" on initial load
+  useEffect(() => {
+    if (isEditing && existingSession) {
+      lastSavedRef.current = {
+        name: sessionName,
+        items: items.map(item => ({ ...item })),
+        scheduledDaysOfWeek: scheduledDaysOfWeek,
+      };
+    }
+    // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Save draft whenever items, sessionName, or scheduledDaysOfWeek changes (for NEW sessions only)
+  useEffect(() => {
+    if (sessionId && !existingSession) {
+      // This is an unsaved session - save to draft
+      // Make sure to save a deep copy of items to avoid reference issues
+      saveSessionDraft(sessionId, {
+        name: sessionName,
+        items: items.map(item => ({ ...item })), // Deep copy
+        scheduledDaysOfWeek: scheduledDaysOfWeek,
+      });
+    }
+  }, [sessionId, existingSession, sessionName, items, scheduledDaysOfWeek, saveSessionDraft]);
+
+  // Autosave for existing sessions (with debounced toast notifications)
+  useEffect(() => {
+    // Skip autosave if we're currently loading from store (prevents infinite loop)
+    if (isLoadingFromStoreRef.current) {
+      return;
+    }
+    
+    // Only autosave when editing an existing session
+    if (isEditing && sessionId && sessionName.trim() && items.length > 0) {
+      // Create a snapshot of current state for comparison
+      const currentState = {
+        name: sessionName.trim(),
+        items: items.map(item => ({ ...item })),
+        scheduledDaysOfWeek: scheduledDaysOfWeek,
+      };
+      
+      // Check if state has actually changed by comparing with last saved state
+      const lastSaved = lastSavedRef.current;
+      if (lastSaved) {
+        const nameChanged = lastSaved.name !== currentState.name;
+        const scheduledChanged = JSON.stringify(lastSaved.scheduledDaysOfWeek) !== JSON.stringify(currentState.scheduledDaysOfWeek);
+        const itemsChanged = JSON.stringify(lastSaved.items) !== JSON.stringify(currentState.items);
+        
+        // Only save if something actually changed
+        if (!nameChanged && !scheduledChanged && !itemsChanged) {
+          return; // No changes, skip save
+        }
+      }
+      
+      // Save the session
+      updateSessionTemplate(sessionId, currentState);
+      
+      // Update last saved ref
+      lastSavedRef.current = currentState;
+      
+      // Mark that we have unsaved changes (for navigation away toast)
+      hasUnsavedChangesRef.current = true;
+      
+      // Clear any existing timeout
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      
+      // Show toast after 1.5 seconds of inactivity
+      saveTimeoutRef.current = setTimeout(() => {
+        setToastVisible(true);
+        hasUnsavedChangesRef.current = false;
+      }, 1500);
+    }
+    
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [isEditing, sessionId, sessionName, items, scheduledDaysOfWeek, updateSessionTemplate]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRestModal, setShowRestModal] = useState(false);
   const [showTransitionModal, setShowTransitionModal] = useState(false);
@@ -68,30 +211,198 @@ export default function SessionBuilderScreen({ navigation, route }) {
     }
   };
 
+  // Handle updates from BlockEditScreen when editing unsaved items
+  // Use a separate useEffect to watch for params changes
+  useEffect(() => {
+    const { updatedBlockId, updatedBlockData, updateAll } = route.params || {};
+    
+    if (updatedBlockId && updatedBlockData) {
+      // Use functional update to ensure we have the latest items state
+      setItems((currentItems) => {
+        // Restore from draft if items is empty (component remounted)
+        let updatedItems = currentItems.length > 0 ? [...currentItems] : [];
+        
+        if (updatedItems.length === 0 && sessionId && !existingSession) {
+          const draft = getSessionDraft(sessionId);
+          if (draft?.items) {
+            updatedItems = [...draft.items];
+          }
+        }
+        
+        const index = updatedItems.findIndex((item) => item.id === updatedBlockId);
+        
+        if (index === -1) {
+          // Item not found - try to restore from draft one more time
+          if (sessionId && !existingSession) {
+            const draft = getSessionDraft(sessionId);
+            if (draft?.items) {
+              updatedItems = [...draft.items];
+              const retryIndex = updatedItems.findIndex((item) => item.id === updatedBlockId);
+              if (retryIndex === -1) {
+                console.warn('BlockEditScreen: Item not found even after restoring from draft', updatedBlockId);
+                return updatedItems; // Return draft items even if update fails
+              }
+              // Use retryIndex for the update below
+              const originalItem = updatedItems[retryIndex];
+              const originalTemplateId = originalItem?.templateId;
+              const originalLabel = originalItem?.label;
+              if (updateAll) {
+                updatedItems.forEach((item, idx) => {
+                  let isMatching = false;
+                  if (item.id === updatedBlockId) {
+                    isMatching = true;
+                  } else if (item.type === BlockType.ACTIVITY && originalTemplateId) {
+                    isMatching = item.templateId === originalTemplateId;
+                  } else {
+                    isMatching = item.label === originalLabel;
+                  }
+                  if (isMatching) {
+                    updatedItems[idx] = { ...item, ...updatedBlockData, id: item.id, templateId: item.templateId };
+                  }
+                });
+              } else {
+                updatedItems[retryIndex] = { ...updatedItems[retryIndex], ...updatedBlockData, id: updatedItems[retryIndex].id, templateId: updatedItems[retryIndex].templateId };
+              }
+              return updatedItems;
+            }
+          }
+          console.warn('BlockEditScreen: Item not found in items array', updatedBlockId);
+          return currentItems;
+        }
+        
+        if (updateAll) {
+          // Update all matching instances
+          const originalItem = updatedItems[index];
+          const originalTemplateId = originalItem?.templateId;
+          const originalLabel = originalItem?.label;
+          
+          updatedItems.forEach((item, idx) => {
+            let isMatching = false;
+            if (item.id === updatedBlockId) {
+              isMatching = true;
+            } else if (item.type === BlockType.ACTIVITY && originalTemplateId) {
+              isMatching = item.templateId === originalTemplateId;
+            } else {
+              isMatching = item.label === originalLabel;
+            }
+            
+            if (isMatching) {
+              updatedItems[idx] = {
+                ...item,
+                ...updatedBlockData,
+                id: item.id,
+                templateId: item.templateId,
+              };
+            }
+          });
+        } else {
+          // Update only the one item
+          updatedItems[index] = {
+            ...updatedItems[index],
+            ...updatedBlockData,
+            id: updatedItems[index].id,
+            templateId: updatedItems[index].templateId,
+          };
+        }
+        
+        // Auto-save draft immediately after updating
+        if (sessionId && !existingSession) {
+          saveSessionDraft(sessionId, {
+            name: sessionName,
+            items: updatedItems.map(item => ({ ...item })),
+            scheduledDaysOfWeek: scheduledDaysOfWeek,
+          });
+        }
+        
+        return updatedItems;
+      });
+      
+      // Clear the params to prevent re-processing
+      navigation.setParams({ updatedBlockId: undefined, updatedBlockData: undefined, updateAll: undefined });
+    }
+  }, [route.params?.updatedBlockId, route.params?.updatedBlockData, route.params?.updateAll, navigation, sessionId, existingSession, getSessionDraft, sessionName, scheduledDaysOfWeek, saveSessionDraft]);
+
   // Reload session from store when screen comes back into focus (e.g., after editing a block)
+  // But only if the session exists in the store (has been saved at least once)
+  // Skip this if we just processed params (to avoid overwriting unsaved changes)
   useFocusEffect(
     React.useCallback(() => {
+      // Only reload from store if there are no pending params to process
+      const { updatedBlockId } = route.params || {};
+      if (updatedBlockId) {
+        // Params are being processed by the useEffect above, don't reload from store
+        return;
+      }
+      
+      // If no params to process, reload from store (only if session exists)
       if (sessionId) {
         const currentSession = sessionTemplates.find((s) => s.id === sessionId);
         if (currentSession) {
-          // Update local state with latest from store
-          setItems(currentSession.items ? [...currentSession.items] : []);
-          setSessionName(currentSession.name || 'New Session');
-          setScheduledDaysOfWeek(currentSession.scheduledDaysOfWeek || []);
+          // Set flag to prevent autosave during reload
+          isLoadingFromStoreRef.current = true;
+          
+          // Session exists in store - update local state with latest from store
+          const newItems = currentSession.items ? [...currentSession.items] : [];
+          const newName = currentSession.name || 'New Session';
+          const newScheduled = currentSession.scheduledDaysOfWeek || [];
+          
+          setItems(newItems);
+          setSessionName(newName);
+          setScheduledDaysOfWeek(newScheduled);
+          
+          // Update last saved ref to match what we just loaded (prevents false "changes" on initial load)
+          lastSavedRef.current = {
+            name: newName,
+            items: newItems.map(item => ({ ...item })),
+            scheduledDaysOfWeek: newScheduled,
+          };
+          
+          // Reset the unsaved changes flag since we just loaded
+          hasUnsavedChangesRef.current = false;
+          
+          // Clear flag after a brief delay to allow state updates to complete
+          setTimeout(() => {
+            isLoadingFromStoreRef.current = false;
+          }, 100);
+        } else {
+          // Session doesn't exist in store - restore from draft for unsaved sessions
+          const draft = getSessionDraft(sessionId);
+          if (draft) {
+            setItems(draft.items ? [...draft.items] : []);
+            setSessionName(draft.name || 'New Session');
+            setScheduledDaysOfWeek(draft.scheduledDaysOfWeek || []);
+            lastSavedRef.current = null; // Clear last saved for unsaved sessions
+          }
         }
       }
-    }, [sessionId, sessionTemplates])
+      
+      // Cleanup function - show toast when navigating away if there were unsaved changes
+      return () => {
+        // Screen is losing focus - show toast if there were unsaved changes
+        if (hasUnsavedChangesRef.current && isEditing) {
+          setToastVisible(true);
+          hasUnsavedChangesRef.current = false;
+        }
+        // Clear timeout when navigating away
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+        }
+      };
+    }, [sessionId, sessionTemplates, route.params?.updatedBlockId, getSessionDraft, isEditing])
   );
 
   useEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
-          <Text style={styles.saveButtonText}>Save</Text>
-        </TouchableOpacity>
+        // Only show Save button for new sessions (not when editing existing sessions)
+        isEditing ? null : (
+          <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
+            <Text style={styles.saveButtonText}>Save</Text>
+          </TouchableOpacity>
+        )
       ),
     });
-  }, [sessionName, items, scheduledDaysOfWeek]);
+  }, [isEditing, sessionName, items, scheduledDaysOfWeek]);
 
   const handleSave = async () => {
     if (!sessionName.trim()) {
@@ -120,11 +431,15 @@ export default function SessionBuilderScreen({ navigation, route }) {
           setProModalVisible(true);
           return;
         }
-        await addSessionTemplate({
+        const newSession = await addSessionTemplate({
           name: sessionName.trim(),
           items,
           scheduledDaysOfWeek: scheduledDaysOfWeek,
         });
+        // Delete the draft now that it's been saved
+        if (sessionId) {
+          deleteSessionDraft(sessionId);
+        }
       }
       navigation.goBack();
     } catch (error) {
@@ -139,7 +454,12 @@ export default function SessionBuilderScreen({ navigation, route }) {
   };
 
   const handleAddBlock = (blockInstance) => {
-    setItems([...items, blockInstance]);
+    const newItems = [...items, blockInstance];
+    setItems(newItems);
+    // Only save draft for new sessions (autosave handles existing sessions)
+    if (!isEditing) {
+      saveDraftNow(newItems);
+    }
   };
 
   const handleDeleteItem = (index) => {
@@ -154,6 +474,10 @@ export default function SessionBuilderScreen({ navigation, route }) {
           onPress: () => {
             const newItems = items.filter((_, i) => i !== index);
             setItems(newItems);
+            // Only save draft for new sessions (autosave handles existing sessions)
+            if (!isEditing) {
+              saveDraftNow(newItems);
+            }
           },
         },
       ]
@@ -178,19 +502,36 @@ export default function SessionBuilderScreen({ navigation, route }) {
     const newItems = [...items];
     newItems.splice(index + 1, 0, duplicated);
     setItems(newItems);
+    // Only save draft for new sessions (autosave handles existing sessions)
+    if (!isEditing) {
+      saveDraftNow(newItems);
+    }
   };
 
   const handleEditItem = (index) => {
     const item = items[index];
     // Navigate to BlockEditScreen with session context
     // blockInstanceId is the id of the BlockInstance in the session
-    // sessionId identifies which session we're editing
+    // sessionId identifies which session we're editing (use generated ID if null)
     // blockIndex is the position in the session
+    // blockInstanceData is the item data itself - needed for unsaved items (like duplicates)
     navigation.navigate('BlockEdit', {
       blockInstanceId: item.id,
-      sessionId: sessionId,
+      sessionId: sessionId, // This will be the generated ID for new sessions
       blockIndex: index,
+      blockInstanceData: item, // Pass the item data directly for unsaved items
     });
+  };
+
+  // Helper function to save draft immediately
+  const saveDraftNow = (itemsToSave) => {
+    if (sessionId && !existingSession) {
+      saveSessionDraft(sessionId, {
+        name: sessionName,
+        items: itemsToSave.map(item => ({ ...item })),
+        scheduledDaysOfWeek: scheduledDaysOfWeek,
+      });
+    }
   };
 
   const handleMoveUp = (index) => {
@@ -198,6 +539,10 @@ export default function SessionBuilderScreen({ navigation, route }) {
       const newItems = [...items];
       [newItems[index - 1], newItems[index]] = [newItems[index], newItems[index - 1]];
       setItems(newItems);
+      // Only save draft for new sessions (autosave handles existing sessions)
+      if (!isEditing) {
+        saveDraftNow(newItems);
+      }
     }
   };
 
@@ -206,6 +551,10 @@ export default function SessionBuilderScreen({ navigation, route }) {
       const newItems = [...items];
       [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
       setItems(newItems);
+      // Only save draft for new sessions (autosave handles existing sessions)
+      if (!isEditing) {
+        saveDraftNow(newItems);
+      }
     }
   };
 
@@ -275,16 +624,23 @@ export default function SessionBuilderScreen({ navigation, route }) {
           >
             <Text style={[styles.actionButtonText, styles.deleteButtonText]}>Del</Text>
           </TouchableOpacity>
-        </View>
       </View>
-    );
-  };
+    </View>
+  );
+};
 
   const totalDuration = getSessionTotalDuration({ items });
   const styles = getStyles(colors);
 
   return (
     <View style={styles.container}>
+      {/* Toast Notification - positioned at top near session name */}
+      <Toast 
+        message="Changes Saved" 
+        visible={toastVisible} 
+        onHide={() => setToastVisible(false)} 
+      />
+      
       <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
         {/* Session Name */}
         <View style={styles.section}>

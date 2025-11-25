@@ -18,7 +18,7 @@ import ProUpgradeModal from '../components/ProUpgradeModal';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function BlockEditScreen({ navigation, route }) {
-  const { blockId, blockInstanceId, sessionId, blockIndex } = route.params || {};
+  const { blockId, blockInstanceId, sessionId, blockIndex, blockInstanceData } = route.params || {};
   const colors = useTheme();
   const blockTemplates = useStore((state) => state.blockTemplates);
   const sessionTemplates = useStore((state) => state.sessionTemplates);
@@ -34,15 +34,22 @@ export default function BlockEditScreen({ navigation, route }) {
   
   // Get the existing block - either from library or from session
   // Use useMemo to recompute when dependencies change
+  // If blockInstanceData is provided, use it (for unsaved items like duplicates)
+  // Otherwise, look it up from the store
   const existingBlock = React.useMemo(() => {
     if (isEditingLibraryTemplate) {
       return blockTemplates.find((b) => b.id === blockId) || null;
     } else if (isEditingSessionInstance) {
+      // First check if item data was passed directly (for unsaved items)
+      if (blockInstanceData && blockInstanceData.id === blockInstanceId) {
+        return blockInstanceData;
+      }
+      // Otherwise, look it up from the store
       const session = sessionTemplates.find((s) => s.id === sessionId);
       return session?.items?.find((item) => item.id === blockInstanceId) || null;
     }
     return null;
-  }, [isEditingLibraryTemplate, isEditingSessionInstance, blockId, blockInstanceId, sessionId, blockTemplates, sessionTemplates]);
+  }, [isEditingLibraryTemplate, isEditingSessionInstance, blockId, blockInstanceId, sessionId, blockInstanceData, blockTemplates, sessionTemplates]);
   
   const isEditing = isEditingLibraryTemplate || isEditingSessionInstance;
 
@@ -170,8 +177,18 @@ export default function BlockEditScreen({ navigation, route }) {
       } else if (isEditingSessionInstance) {
         // Editing a session instance
         const session = sessionTemplates.find((s) => s.id === sessionId);
+        
+        // If session doesn't exist in store (unsaved session), handle via navigation params
         if (!session) {
-          Alert.alert('Error', 'Session not found.');
+          // Session doesn't exist in store - this is an unsaved session
+          // Navigate back to SessionBuilder with params
+          // The draft system will handle restoring the items
+          navigation.navigate('SessionBuilder', {
+            sessionId: sessionId,
+            updatedBlockId: blockInstanceId,
+            updatedBlockData: blockData,
+            updateAll: false,
+          });
           return;
         }
 
@@ -221,9 +238,19 @@ export default function BlockEditScreen({ navigation, route }) {
 
   const updateSessionInstance = async (blockData, updateAll) => {
     try {
-      const session = sessionTemplates.find((s) => s.id === sessionId);
+      let session = sessionTemplates.find((s) => s.id === sessionId);
+      
+      // If session doesn't exist in store yet (unsaved session), pass data back via navigation
       if (!session) {
-        Alert.alert('Error', 'Session not found.');
+        // Session doesn't exist in store - this means it's a new/unsaved session
+        // Navigate back to SessionBuilder with params
+        // The draft system will handle restoring the items
+        navigation.navigate('SessionBuilder', {
+          sessionId: sessionId,
+          updatedBlockId: blockInstanceId,
+          updatedBlockData: blockData,
+          updateAll: updateAll,
+        });
         return;
       }
 
@@ -285,6 +312,19 @@ export default function BlockEditScreen({ navigation, route }) {
   const handleUpdateAll = async () => {
     setShowUpdateAllModal(false);
     if (pendingBlockData) {
+      const session = sessionTemplates.find((s) => s.id === sessionId);
+      if (!session) {
+        // Session doesn't exist in store - handle via navigation params
+        navigation.navigate('SessionBuilder', {
+          sessionId: sessionId,
+          updatedBlockId: blockInstanceId,
+          updatedBlockData: pendingBlockData,
+          updateAll: true,
+          restoreFromRef: true, // Signal to restore items from ref
+        });
+        setPendingBlockData(null);
+        return;
+      }
       await updateSessionInstance(pendingBlockData, true);
       setPendingBlockData(null);
     }
@@ -293,6 +333,19 @@ export default function BlockEditScreen({ navigation, route }) {
   const handleUpdateOne = async () => {
     setShowUpdateAllModal(false);
     if (pendingBlockData) {
+      const session = sessionTemplates.find((s) => s.id === sessionId);
+      if (!session) {
+        // Session doesn't exist in store - handle via navigation params
+        navigation.navigate('SessionBuilder', {
+          sessionId: sessionId,
+          updatedBlockId: blockInstanceId,
+          updatedBlockData: pendingBlockData,
+          updateAll: false,
+          restoreFromRef: true, // Signal to restore items from ref
+        });
+        setPendingBlockData(null);
+        return;
+      }
       await updateSessionInstance(pendingBlockData, false);
       setPendingBlockData(null);
     }
