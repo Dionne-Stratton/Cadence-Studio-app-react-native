@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,29 +9,41 @@ import {
   Alert,
   Platform,
   Modal,
-} from 'react-native';
-import useStore from '../store';
-import { BlockType, BlockMode, getBlockTypeColor, BUILT_IN_CATEGORIES } from '../types';
-import { generateId } from '../utils/id';
-import { useTheme } from '../theme';
-import ProUpgradeModal from '../components/ProUpgradeModal';
-import { Ionicons } from '@expo/vector-icons';
+} from "react-native";
+import useStore from "../store";
+import {
+  BlockType,
+  BlockMode,
+  getBlockTypeColor,
+  BUILT_IN_CATEGORIES,
+} from "../types";
+import { generateId } from "../utils/id";
+import { useTheme } from "../theme";
+import ProUpgradeModal from "../components/ProUpgradeModal";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function BlockEditScreen({ navigation, route }) {
-  const { blockId, blockInstanceId, sessionId, blockIndex, blockInstanceData } = route.params || {};
+  const { blockId, blockInstanceId, sessionId, blockIndex, blockInstanceData } =
+    route.params || {};
   const colors = useTheme();
   const blockTemplates = useStore((state) => state.blockTemplates);
   const sessionTemplates = useStore((state) => state.sessionTemplates);
   const settings = useStore((state) => state.settings);
   const addBlockTemplate = useStore((state) => state.addBlockTemplate);
   const updateBlockTemplate = useStore((state) => state.updateBlockTemplate);
-  const updateSessionTemplate = useStore((state) => state.updateSessionTemplate);
+  const updateSessionTemplate = useStore(
+    (state) => state.updateSessionTemplate
+  );
   const updateSettings = useStore((state) => state.updateSettings);
 
   // Determine if we're editing a library template or a session instance
   const isEditingLibraryTemplate = blockId !== null && blockId !== undefined;
-  const isEditingSessionInstance = blockInstanceId !== null && blockInstanceId !== undefined && sessionId !== null && sessionId !== undefined;
-  
+  const isEditingSessionInstance =
+    blockInstanceId !== null &&
+    blockInstanceId !== undefined &&
+    sessionId !== null &&
+    sessionId !== undefined;
+
   // Get the existing block - either from library or from session
   // Use useMemo to recompute when dependencies change
   // If blockInstanceData is provided, use it (for unsaved items like duplicates)
@@ -46,26 +58,38 @@ export default function BlockEditScreen({ navigation, route }) {
       }
       // Otherwise, look it up from the store
       const session = sessionTemplates.find((s) => s.id === sessionId);
-      return session?.items?.find((item) => item.id === blockInstanceId) || null;
+      return (
+        session?.items?.find((item) => item.id === blockInstanceId) || null
+      );
     }
     return null;
-  }, [isEditingLibraryTemplate, isEditingSessionInstance, blockId, blockInstanceId, sessionId, blockInstanceData, blockTemplates, sessionTemplates]);
-  
+  }, [
+    isEditingLibraryTemplate,
+    isEditingSessionInstance,
+    blockId,
+    blockInstanceId,
+    sessionId,
+    blockInstanceData,
+    blockTemplates,
+    sessionTemplates,
+  ]);
+
   const isEditing = isEditingLibraryTemplate || isEditingSessionInstance;
 
-  const [label, setLabel] = useState('');
-  const [category, setCategory] = useState('Uncategorized');
+  const [label, setLabel] = useState("");
+  const [category, setCategory] = useState("Uncategorized");
   const [mode, setMode] = useState(BlockMode.DURATION);
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryName, setNewCategoryName] = useState("");
   const [proModalVisible, setProModalVisible] = useState(false);
-  
+
   // Custom category management state
-  const [showCustomCategoryDropdown, setShowCustomCategoryDropdown] = useState(false);
+  const [showCustomCategoryDropdown, setShowCustomCategoryDropdown] =
+    useState(false);
   const [showEditCategoryModal, setShowEditCategoryModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
-  const [editCategoryName, setEditCategoryName] = useState('');
-  
+  const [editCategoryName, setEditCategoryName] = useState("");
+
   // Separate built-in and custom categories
   const builtInCategories = React.useMemo(() => {
     return [...BUILT_IN_CATEGORIES];
@@ -74,32 +98,34 @@ export default function BlockEditScreen({ navigation, route }) {
   const customCategories = React.useMemo(() => {
     return settings.customCategories || [];
   }, [settings.customCategories]);
-  
+
   // Get all available categories (built-in + custom, with custom shown even if not Pro)
   const allCategories = React.useMemo(() => {
     return [...builtInCategories, ...customCategories];
   }, [builtInCategories, customCategories]);
-  
+
   // Check if a category is custom (not built-in)
   const isCustomCategory = (cat) => {
     return !BUILT_IN_CATEGORIES.includes(cat);
   };
-  
+
   // Filter to only activities (for checking category usage)
-  const activities = blockTemplates.filter(template => template.type === BlockType.ACTIVITY);
-  
+  const activities = blockTemplates.filter(
+    (template) => template.type === BlockType.ACTIVITY
+  );
+
   const [minutes, setMinutes] = useState(0);
   const [seconds, setSeconds] = useState(30);
   const [reps, setReps] = useState(10);
   const [perRepSeconds, setPerRepSeconds] = useState(5);
-  const [notes, setNotes] = useState('');
-  const [url, setUrl] = useState('');
-  
+  const [notes, setNotes] = useState("");
+  const [url, setUrl] = useState("");
+
   // Initialize and update state when existingBlock changes
   useEffect(() => {
     if (existingBlock) {
-      setLabel(existingBlock.label || '');
-      setCategory(existingBlock.category || 'Uncategorized');
+      setLabel(existingBlock.label || "");
+      setCategory(existingBlock.category || "Uncategorized");
       setMode(existingBlock.mode || BlockMode.DURATION);
       if (existingBlock.mode === BlockMode.DURATION) {
         setMinutes(Math.floor((existingBlock.durationSeconds || 0) / 60));
@@ -108,8 +134,8 @@ export default function BlockEditScreen({ navigation, route }) {
         setReps(existingBlock.reps || 10);
         setPerRepSeconds(existingBlock.perRepSeconds || 5);
       }
-      setNotes(existingBlock.notes || '');
-      setUrl(existingBlock.url || '');
+      setNotes(existingBlock.notes || "");
+      setUrl(existingBlock.url || "");
     }
   }, [existingBlock]);
   const [showUpdateAllModal, setShowUpdateAllModal] = useState(false);
@@ -118,18 +144,19 @@ export default function BlockEditScreen({ navigation, route }) {
 
   // Update header title based on context
   useEffect(() => {
-    let title = 'Add Activity';
+    let title = "Add Activity";
     if (isEditingLibraryTemplate) {
-      title = 'Edit Activity';
+      title = "Edit Activity";
     } else if (isEditingSessionInstance) {
-      const blockTypeLabel = existingBlock?.type === BlockType.REST 
-        ? 'Rest' 
-        : existingBlock?.type === BlockType.TRANSITION 
-        ? 'Transition' 
-        : 'Activity';
+      const blockTypeLabel =
+        existingBlock?.type === BlockType.REST
+          ? "Rest"
+          : existingBlock?.type === BlockType.TRANSITION
+          ? "Transition"
+          : "Activity";
       title = `Edit ${blockTypeLabel}`;
     }
-    
+
     navigation.setOptions({
       title,
       headerRight: () => (
@@ -138,12 +165,25 @@ export default function BlockEditScreen({ navigation, route }) {
         </TouchableOpacity>
       ),
     });
-  }, [isEditingLibraryTemplate, isEditingSessionInstance, existingBlock?.type, label, category, mode, minutes, seconds, reps, perRepSeconds, notes, styles]);
+  }, [
+    isEditingLibraryTemplate,
+    isEditingSessionInstance,
+    existingBlock?.type,
+    label,
+    category,
+    mode,
+    minutes,
+    seconds,
+    reps,
+    perRepSeconds,
+    notes,
+    styles,
+  ]);
 
   const handleSave = async () => {
     // Validation
     if (!label.trim()) {
-      Alert.alert('Validation Error', 'Please enter a name for this activity.');
+      Alert.alert("Validation Error", "Please enter a name for this activity.");
       return;
     }
 
@@ -152,20 +192,23 @@ export default function BlockEditScreen({ navigation, route }) {
       durationSeconds = minutes * 60 + seconds;
       if (durationSeconds <= 0) {
         Alert.alert(
-          'Validation Error',
-          'Duration must be greater than 0 seconds.'
+          "Validation Error",
+          "Duration must be greater than 0 seconds."
         );
         return;
       }
     } else if (mode === BlockMode.REPS) {
       if (reps <= 0) {
-        Alert.alert('Validation Error', 'Number of reps must be greater than 0.');
+        Alert.alert(
+          "Validation Error",
+          "Number of reps must be greater than 0."
+        );
         return;
       }
       if (perRepSeconds <= 0) {
         Alert.alert(
-          'Validation Error',
-          'Seconds per rep must be greater than 0.'
+          "Validation Error",
+          "Seconds per rep must be greater than 0."
         );
         return;
       }
@@ -174,9 +217,12 @@ export default function BlockEditScreen({ navigation, route }) {
     const blockData = {
       label: label.trim(),
       type: isEditingSessionInstance ? existingBlock?.type : BlockType.ACTIVITY, // Keep existing type for session instances
-      category: (isEditingSessionInstance && existingBlock?.type !== BlockType.ACTIVITY) 
-        ? null // Rest and Transition don't have categories
-        : (category === 'Uncategorized' ? null : category),
+      category:
+        isEditingSessionInstance && existingBlock?.type !== BlockType.ACTIVITY
+          ? null // Rest and Transition don't have categories
+          : category === "Uncategorized"
+          ? null
+          : category,
       mode,
       ...(mode === BlockMode.DURATION
         ? { durationSeconds }
@@ -193,13 +239,13 @@ export default function BlockEditScreen({ navigation, route }) {
       } else if (isEditingSessionInstance) {
         // Editing a session instance
         const session = sessionTemplates.find((s) => s.id === sessionId);
-        
+
         // If session doesn't exist in store (unsaved session), handle via navigation params
         if (!session) {
           // Session doesn't exist in store - this is an unsaved session
           // Navigate back to SessionBuilder with params
           // The draft system will handle restoring the items
-          navigation.navigate('SessionBuilder', {
+          navigation.replace("SessionBuilder", {
             sessionId: sessionId,
             updatedBlockId: blockInstanceId,
             updatedBlockData: blockData,
@@ -214,15 +260,15 @@ export default function BlockEditScreen({ navigation, route }) {
         // - For rest/transition or activities without templateId: match by original label
         const originalTemplateId = existingBlock?.templateId;
         const originalLabel = existingBlock?.label;
-        
+
         const matchingInstances = session.items.filter((item) => {
           if (item.id === blockInstanceId) return false; // Don't count the one we're editing
-          
+
           // For activities with templateId, match by templateId
           if (item.type === BlockType.ACTIVITY && originalTemplateId) {
             return item.templateId === originalTemplateId;
           }
-          
+
           // For rest/transition, or activities without templateId, match by original label
           return item.label === originalLabel;
         });
@@ -238,7 +284,9 @@ export default function BlockEditScreen({ navigation, route }) {
       } else {
         // Creating new library template
         // Check activity limit for free users when creating new activity
-        const activities = blockTemplates.filter(b => b.type === BlockType.ACTIVITY);
+        const activities = blockTemplates.filter(
+          (b) => b.type === BlockType.ACTIVITY
+        );
         if (!settings.isProUser && activities.length >= 20) {
           setProModalVisible(true);
           return;
@@ -247,7 +295,7 @@ export default function BlockEditScreen({ navigation, route }) {
         navigation.goBack();
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to save. Please try again.');
+      Alert.alert("Error", "Failed to save. Please try again.");
       console.error(error);
     }
   };
@@ -255,13 +303,13 @@ export default function BlockEditScreen({ navigation, route }) {
   const updateSessionInstance = async (blockData, updateAll) => {
     try {
       let session = sessionTemplates.find((s) => s.id === sessionId);
-      
+
       // If session doesn't exist in store yet (unsaved session), pass data back via navigation
       if (!session) {
         // Session doesn't exist in store - this means it's a new/unsaved session
         // Navigate back to SessionBuilder with params
         // The draft system will handle restoring the items
-        navigation.navigate('SessionBuilder', {
+        navigation.navigate("SessionBuilder", {
           sessionId: sessionId,
           updatedBlockId: blockInstanceId,
           updatedBlockData: blockData,
@@ -271,17 +319,17 @@ export default function BlockEditScreen({ navigation, route }) {
       }
 
       const updatedItems = [...session.items];
-      
+
       // Store original values for matching (use existingBlock which was loaded at start)
       const originalTemplateId = existingBlock?.templateId;
       const originalLabel = existingBlock?.label;
-      
+
       if (updateAll) {
         // Update all matching instances in the session
         updatedItems.forEach((item, idx) => {
           // Check if this is a matching instance
           let isMatching = false;
-          
+
           if (item.id === blockInstanceId) {
             // The one being edited - always update
             isMatching = true;
@@ -292,7 +340,7 @@ export default function BlockEditScreen({ navigation, route }) {
             // Rest/transition or activities without templateId - match by original label
             isMatching = item.label === originalLabel;
           }
-          
+
           if (isMatching) {
             updatedItems[idx] = {
               ...item,
@@ -305,7 +353,9 @@ export default function BlockEditScreen({ navigation, route }) {
         });
       } else {
         // Update only the one instance being edited
-        const index = updatedItems.findIndex((item) => item.id === blockInstanceId);
+        const index = updatedItems.findIndex(
+          (item) => item.id === blockInstanceId
+        );
         if (index !== -1) {
           updatedItems[index] = {
             ...updatedItems[index],
@@ -320,7 +370,7 @@ export default function BlockEditScreen({ navigation, route }) {
       await updateSessionTemplate(sessionId, { items: updatedItems });
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Error', 'Failed to update session. Please try again.');
+      Alert.alert("Error", "Failed to update session. Please try again.");
       console.error(error);
     }
   };
@@ -331,7 +381,7 @@ export default function BlockEditScreen({ navigation, route }) {
       const session = sessionTemplates.find((s) => s.id === sessionId);
       if (!session) {
         // Session doesn't exist in store - handle via navigation params
-        navigation.navigate('SessionBuilder', {
+        navigation.navigate("SessionBuilder", {
           sessionId: sessionId,
           updatedBlockId: blockInstanceId,
           updatedBlockData: pendingBlockData,
@@ -352,7 +402,7 @@ export default function BlockEditScreen({ navigation, route }) {
       const session = sessionTemplates.find((s) => s.id === sessionId);
       if (!session) {
         // Session doesn't exist in store - handle via navigation params
-        navigation.navigate('SessionBuilder', {
+        navigation.navigate("SessionBuilder", {
           sessionId: sessionId,
           updatedBlockId: blockInstanceId,
           updatedBlockData: pendingBlockData,
@@ -374,7 +424,7 @@ export default function BlockEditScreen({ navigation, route }) {
     }
     setShowAddCategoryModal(true);
   };
-  
+
   const handleCategorySelect = (cat) => {
     // If it's a custom category and user is not Pro, show Pro modal
     if (isCustomCategory(cat) && !settings.isProUser) {
@@ -386,43 +436,53 @@ export default function BlockEditScreen({ navigation, route }) {
 
   const handleSaveCategory = () => {
     if (!newCategoryName.trim()) {
-      Alert.alert('Validation Error', 'Please enter a category name.');
+      Alert.alert("Validation Error", "Please enter a category name.");
       return;
     }
     const trimmedName = newCategoryName.trim();
     if (BUILT_IN_CATEGORIES.includes(trimmedName)) {
-      Alert.alert('Validation Error', 'This category already exists as a built-in category.');
+      Alert.alert(
+        "Validation Error",
+        "This category already exists as a built-in category."
+      );
       return;
     }
     if (settings.customCategories?.includes(trimmedName)) {
-      Alert.alert('Validation Error', 'This category already exists.');
+      Alert.alert("Validation Error", "This category already exists.");
       return;
     }
-    
-    const updatedCategories = [...(settings.customCategories || []), trimmedName];
+
+    const updatedCategories = [
+      ...(settings.customCategories || []),
+      trimmedName,
+    ];
     updateSettings({ customCategories: updatedCategories });
     setCategory(trimmedName);
-    setNewCategoryName('');
+    setNewCategoryName("");
     setShowAddCategoryModal(false);
   };
 
   const handleEditCategory = (categoryName) => {
     // Check if any activities use this category
     const activitiesUsingCategory = activities.filter(
-      (activity) => (activity.category || 'Uncategorized') === categoryName
+      (activity) => (activity.category || "Uncategorized") === categoryName
     );
 
     if (activitiesUsingCategory.length > 0) {
       Alert.alert(
-        'Edit Category',
-        `Editing this category will update all ${activitiesUsingCategory.length} activit${activitiesUsingCategory.length === 1 ? 'y' : 'ies'} using it. Continue?`,
+        "Edit Category",
+        `Editing this category will update all ${
+          activitiesUsingCategory.length
+        } activit${
+          activitiesUsingCategory.length === 1 ? "y" : "ies"
+        } using it. Continue?`,
         [
           {
-            text: 'Cancel',
-            style: 'cancel',
+            text: "Cancel",
+            style: "cancel",
           },
           {
-            text: 'Continue',
+            text: "Continue",
             onPress: () => {
               setEditingCategory(categoryName);
               setEditCategoryName(categoryName);
@@ -441,21 +501,24 @@ export default function BlockEditScreen({ navigation, route }) {
 
   const handleSaveEditCategory = async () => {
     if (!editCategoryName.trim()) {
-      Alert.alert('Validation Error', 'Category name cannot be empty.');
+      Alert.alert("Validation Error", "Category name cannot be empty.");
       return;
     }
     const trimmedName = editCategoryName.trim();
-    
+
     // Check if new name already exists
     if (trimmedName === editingCategory) {
       setShowEditCategoryModal(false);
       setEditingCategory(null);
-      setEditCategoryName('');
+      setEditCategoryName("");
       return;
     }
-    
-    if (BUILT_IN_CATEGORIES.includes(trimmedName) || customCategories.includes(trimmedName)) {
-      Alert.alert('Validation Error', 'Category already exists.');
+
+    if (
+      BUILT_IN_CATEGORIES.includes(trimmedName) ||
+      customCategories.includes(trimmedName)
+    ) {
+      Alert.alert("Validation Error", "Category already exists.");
       return;
     }
 
@@ -467,7 +530,7 @@ export default function BlockEditScreen({ navigation, route }) {
 
     // Update all activities using this category
     const activitiesUsingCategory = activities.filter(
-      (activity) => (activity.category || 'Uncategorized') === editingCategory
+      (activity) => (activity.category || "Uncategorized") === editingCategory
     );
     for (const activity of activitiesUsingCategory) {
       await updateBlockTemplate(activity.id, { category: trimmedName });
@@ -480,41 +543,47 @@ export default function BlockEditScreen({ navigation, route }) {
 
     setShowEditCategoryModal(false);
     setEditingCategory(null);
-    setEditCategoryName('');
+    setEditCategoryName("");
     // Keep dropdown open after editing
   };
 
   const handleDeleteCategory = (categoryName) => {
     // Check if any activities use this category
     const activitiesUsingCategory = activities.filter(
-      (activity) => (activity.category || 'Uncategorized') === categoryName
+      (activity) => (activity.category || "Uncategorized") === categoryName
     );
 
     if (activitiesUsingCategory.length > 0) {
       Alert.alert(
-        'Delete Category',
-        `Deleting this category will make ${activitiesUsingCategory.length} activit${activitiesUsingCategory.length === 1 ? 'y' : 'ies'} uncategorized. Continue?`,
+        "Delete Category",
+        `Deleting this category will make ${
+          activitiesUsingCategory.length
+        } activit${
+          activitiesUsingCategory.length === 1 ? "y" : "ies"
+        } uncategorized. Continue?`,
         [
           {
-            text: 'Cancel',
-            style: 'cancel',
+            text: "Cancel",
+            style: "cancel",
           },
           {
-            text: 'Delete',
-            style: 'destructive',
+            text: "Delete",
+            style: "destructive",
             onPress: async () => {
               // Remove category
-              const updated = customCategories.filter((cat) => cat !== categoryName);
+              const updated = customCategories.filter(
+                (cat) => cat !== categoryName
+              );
               updateSettings({ customCategories: updated });
-              
+
               // Update all activities to be uncategorized
               for (const activity of activitiesUsingCategory) {
                 await updateBlockTemplate(activity.id, { category: null });
               }
-              
+
               // If this category was selected, reset to Uncategorized
               if (category === categoryName) {
-                setCategory('Uncategorized');
+                setCategory("Uncategorized");
               }
             },
           },
@@ -522,22 +591,24 @@ export default function BlockEditScreen({ navigation, route }) {
       );
     } else {
       Alert.alert(
-        'Delete Category',
+        "Delete Category",
         `Are you sure you want to delete "${categoryName}"?`,
         [
           {
-            text: 'Cancel',
-            style: 'cancel',
+            text: "Cancel",
+            style: "cancel",
           },
           {
-            text: 'Delete',
-            style: 'destructive',
+            text: "Delete",
+            style: "destructive",
             onPress: () => {
-              const updated = customCategories.filter((cat) => cat !== categoryName);
+              const updated = customCategories.filter(
+                (cat) => cat !== categoryName
+              );
               updateSettings({ customCategories: updated });
               // If this category was selected, reset to Uncategorized
               if (category === categoryName) {
-                setCategory('Uncategorized');
+                setCategory("Uncategorized");
               }
             },
           },
@@ -549,10 +620,7 @@ export default function BlockEditScreen({ navigation, route }) {
 
   const renderModeButton = (blockMode, label) => (
     <TouchableOpacity
-      style={[
-        styles.modeButton,
-        mode === blockMode && styles.modeButtonActive,
-      ]}
+      style={[styles.modeButton, mode === blockMode && styles.modeButtonActive]}
       onPress={() => setMode(blockMode)}
     >
       <Text
@@ -582,82 +650,106 @@ export default function BlockEditScreen({ navigation, route }) {
         </View>
 
         {/* Category Selection - Only for activities */}
-        {(!isEditingSessionInstance || existingBlock?.type === BlockType.ACTIVITY) && (
+        {(!isEditingSessionInstance ||
+          existingBlock?.type === BlockType.ACTIVITY) && (
           <View style={styles.section}>
             <Text style={styles.label}>Category *</Text>
             <View style={styles.categoryContainer}>
               {/* Custom Categories Dropdown - pill button */}
-              {customCategories.length > 0 && (() => {
-                const selectedCustomCategory = customCategories.find(cat => category === cat);
-                const displayText = selectedCustomCategory || 'Custom';
-                return (
-                  <View style={styles.customCategoryPillContainer}>
-                    <TouchableOpacity
-                      style={[
-                        styles.categoryChip,
-                        selectedCustomCategory && styles.categoryChipActive,
-                      ]}
-                      onPress={() => setShowCustomCategoryDropdown(!showCustomCategoryDropdown)}
-                    >
-                      <Text
+              {customCategories.length > 0 &&
+                (() => {
+                  const selectedCustomCategory = customCategories.find(
+                    (cat) => category === cat
+                  );
+                  const displayText = selectedCustomCategory || "Custom";
+                  return (
+                    <View style={styles.customCategoryPillContainer}>
+                      <TouchableOpacity
                         style={[
-                          styles.categoryChipText,
-                          selectedCustomCategory && styles.categoryChipTextActive,
+                          styles.categoryChip,
+                          selectedCustomCategory && styles.categoryChipActive,
                         ]}
+                        onPress={() =>
+                          setShowCustomCategoryDropdown(
+                            !showCustomCategoryDropdown
+                          )
+                        }
                       >
-                        {displayText} {showCustomCategoryDropdown ? '▼' : '▶'}
-                      </Text>
-                    </TouchableOpacity>
-                    {showCustomCategoryDropdown && (
-                      <View style={styles.customCategoryDropdownAbsolute}>
-                        {customCategories.map((cat, index) => (
-                          <View 
-                            key={cat} 
-                            style={[
-                              styles.customCategoryDropdownItem,
-                              index === customCategories.length - 1 && styles.customCategoryDropdownItemLast
-                            ]}
-                          >
-                            <TouchableOpacity
+                        <Text
+                          style={[
+                            styles.categoryChipText,
+                            selectedCustomCategory &&
+                              styles.categoryChipTextActive,
+                          ]}
+                        >
+                          {displayText} {showCustomCategoryDropdown ? "▼" : "▶"}
+                        </Text>
+                      </TouchableOpacity>
+                      {showCustomCategoryDropdown && (
+                        <View style={styles.customCategoryDropdownAbsolute}>
+                          {customCategories.map((cat, index) => (
+                            <View
+                              key={cat}
                               style={[
-                                styles.customCategoryDropdownItemContent,
-                                category === cat && styles.customCategoryDropdownItemContentActive,
+                                styles.customCategoryDropdownItem,
+                                index === customCategories.length - 1 &&
+                                  styles.customCategoryDropdownItemLast,
                               ]}
-                              onPress={() => {
-                                setCategory(cat);
-                                setShowCustomCategoryDropdown(false);
-                              }}
                             >
-                              <Text
+                              <TouchableOpacity
                                 style={[
-                                  styles.customCategoryDropdownItemText,
-                                  category === cat && styles.customCategoryDropdownItemTextActive,
+                                  styles.customCategoryDropdownItemContent,
+                                  category === cat &&
+                                    styles.customCategoryDropdownItemContentActive,
                                 ]}
+                                onPress={() => {
+                                  setCategory(cat);
+                                  setShowCustomCategoryDropdown(false);
+                                }}
                               >
-                                {cat}
-                              </Text>
-                            </TouchableOpacity>
-                            <View style={styles.customCategoryActions}>
-                              <TouchableOpacity
-                                style={styles.customCategoryActionButton}
-                                onPress={() => handleEditCategory(cat)}
-                              >
-                                <Text style={styles.customCategoryActionButtonText}>✏️</Text>
+                                <Text
+                                  style={[
+                                    styles.customCategoryDropdownItemText,
+                                    category === cat &&
+                                      styles.customCategoryDropdownItemTextActive,
+                                  ]}
+                                >
+                                  {cat}
+                                </Text>
                               </TouchableOpacity>
-                              <TouchableOpacity
-                                style={styles.customCategoryActionButton}
-                                onPress={() => handleDeleteCategory(cat)}
-                              >
-                                <Text style={styles.customCategoryActionButtonText}>🗑️</Text>
-                              </TouchableOpacity>
+                              <View style={styles.customCategoryActions}>
+                                <TouchableOpacity
+                                  style={styles.customCategoryActionButton}
+                                  onPress={() => handleEditCategory(cat)}
+                                >
+                                  <Text
+                                    style={
+                                      styles.customCategoryActionButtonText
+                                    }
+                                  >
+                                    ✏️
+                                  </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={styles.customCategoryActionButton}
+                                  onPress={() => handleDeleteCategory(cat)}
+                                >
+                                  <Text
+                                    style={
+                                      styles.customCategoryActionButtonText
+                                    }
+                                  >
+                                    🗑️
+                                  </Text>
+                                </TouchableOpacity>
+                              </View>
                             </View>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-                  </View>
-                );
-              })()}
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })()}
               {/* Built-in categories as chips */}
               {builtInCategories.map((cat) => {
                 const isLocked = false; // Built-in categories are never locked
@@ -693,10 +785,18 @@ export default function BlockEditScreen({ navigation, route }) {
             )}
             {!settings.isProUser && (
               <TouchableOpacity
-                style={[styles.addCategoryButton, styles.addCategoryButtonDisabled]}
+                style={[
+                  styles.addCategoryButton,
+                  styles.addCategoryButtonDisabled,
+                ]}
                 disabled
               >
-                <Text style={[styles.addCategoryButtonText, styles.addCategoryButtonTextDisabled]}>
+                <Text
+                  style={[
+                    styles.addCategoryButtonText,
+                    styles.addCategoryButtonTextDisabled,
+                  ]}
+                >
                   🔒 + Add Category (Pro)
                 </Text>
               </TouchableOpacity>
@@ -708,8 +808,8 @@ export default function BlockEditScreen({ navigation, route }) {
         <View style={styles.section}>
           <Text style={styles.label}>Mode *</Text>
           <View style={styles.modeButtonContainer}>
-            {renderModeButton(BlockMode.DURATION, 'Duration')}
-            {renderModeButton(BlockMode.REPS, 'Reps')}
+            {renderModeButton(BlockMode.DURATION, "Duration")}
+            {renderModeButton(BlockMode.REPS, "Reps")}
           </View>
         </View>
 
@@ -790,7 +890,8 @@ export default function BlockEditScreen({ navigation, route }) {
         </View>
 
         {/* URL (Optional) - Only for activities */}
-        {(!isEditingSessionInstance || existingBlock?.type === BlockType.ACTIVITY) && (
+        {(!isEditingSessionInstance ||
+          existingBlock?.type === BlockType.ACTIVITY) && (
           <View style={styles.section}>
             <Text style={styles.label}>URL (Optional)</Text>
             <TextInput
@@ -806,7 +907,7 @@ export default function BlockEditScreen({ navigation, route }) {
           </View>
         )}
       </View>
-      
+
       {/* Add Category Modal */}
       <Modal
         visible={showAddCategoryModal}
@@ -830,7 +931,7 @@ export default function BlockEditScreen({ navigation, route }) {
                 style={[styles.modalButton, styles.modalButtonCancel]}
                 onPress={() => {
                   setShowAddCategoryModal(false);
-                  setNewCategoryName('');
+                  setNewCategoryName("");
                 }}
               >
                 <Text style={styles.modalButtonText}>Cancel</Text>
@@ -839,7 +940,11 @@ export default function BlockEditScreen({ navigation, route }) {
                 style={[styles.modalButton, styles.modalButtonSave]}
                 onPress={handleSaveCategory}
               >
-                <Text style={[styles.modalButtonText, styles.modalButtonTextSave]}>Save</Text>
+                <Text
+                  style={[styles.modalButtonText, styles.modalButtonTextSave]}
+                >
+                  Save
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -854,7 +959,7 @@ export default function BlockEditScreen({ navigation, route }) {
         onRequestClose={() => {
           setShowEditCategoryModal(false);
           setEditingCategory(null);
-          setEditCategoryName('');
+          setEditCategoryName("");
         }}
       >
         <View style={styles.modalOverlay}>
@@ -874,7 +979,7 @@ export default function BlockEditScreen({ navigation, route }) {
                 onPress={() => {
                   setShowEditCategoryModal(false);
                   setEditingCategory(null);
-                  setEditCategoryName('');
+                  setEditCategoryName("");
                 }}
               >
                 <Text style={styles.modalButtonText}>Cancel</Text>
@@ -883,7 +988,11 @@ export default function BlockEditScreen({ navigation, route }) {
                 style={[styles.modalButton, styles.modalButtonSave]}
                 onPress={handleSaveEditCategory}
               >
-                <Text style={[styles.modalButtonText, styles.modalButtonTextSave]}>Save</Text>
+                <Text
+                  style={[styles.modalButtonText, styles.modalButtonTextSave]}
+                >
+                  Save
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -915,29 +1024,40 @@ export default function BlockEditScreen({ navigation, route }) {
               if (!session) {
                 return (
                   <Text style={styles.modalMessage}>
-                    Do you want to update all instances in this session, or only this one?
+                    Do you want to update all instances in this session, or only
+                    this one?
                   </Text>
                 );
               }
-              
+
               const matchingCount = session.items.filter((item) => {
                 if (item.id === blockInstanceId) return false; // Don't count the one being edited
-                if (item.type === BlockType.ACTIVITY && existingBlock?.templateId) {
+                if (
+                  item.type === BlockType.ACTIVITY &&
+                  existingBlock?.templateId
+                ) {
                   return item.templateId === existingBlock.templateId;
                 }
                 return item.label === existingBlock?.label;
               }).length;
-              
+
               const totalInstances = matchingCount + 1; // +1 for the one being edited
-              const blockTypeLabel = existingBlock?.type === BlockType.ACTIVITY ? 'activity' : existingBlock?.type === BlockType.REST ? 'rest' : 'transition';
-              
+              const blockTypeLabel =
+                existingBlock?.type === BlockType.ACTIVITY
+                  ? "activity"
+                  : existingBlock?.type === BlockType.REST
+                  ? "rest"
+                  : "transition";
+
               return (
                 <>
                   <Text style={styles.modalMessage}>
-                    This {blockTypeLabel} appears {totalInstances} time{totalInstances > 1 ? 's' : ''} in this session.
+                    This {blockTypeLabel} appears {totalInstances} time
+                    {totalInstances > 1 ? "s" : ""} in this session.
                   </Text>
                   <Text style={styles.modalMessage}>
-                    Do you want to update all instances in this session, or only this one?
+                    Do you want to update all instances in this session, or only
+                    this one?
                   </Text>
                 </>
               );
@@ -956,13 +1076,19 @@ export default function BlockEditScreen({ navigation, route }) {
                 style={[styles.modalButton, styles.modalButtonSecondary]}
                 onPress={handleUpdateOne}
               >
-                <Text style={[styles.modalButtonText, { color: colors.text }]}>This One</Text>
+                <Text style={[styles.modalButtonText, { color: colors.text }]}>
+                  This One
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonSave]}
                 onPress={handleUpdateAll}
               >
-                <Text style={[styles.modalButtonText, styles.modalButtonTextSave]}>All Instances</Text>
+                <Text
+                  style={[styles.modalButtonText, styles.modalButtonTextSave]}
+                >
+                  All Instances
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -972,282 +1098,283 @@ export default function BlockEditScreen({ navigation, route }) {
   );
 }
 
-const getStyles = (colors) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    padding: 16,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    color: colors.text,
-    ...Platform.select({
-      android: {
-        paddingVertical: 12,
-      },
-    }),
-  },
-  textArea: {
-    minHeight: 100,
-    paddingTop: 12,
-  },
-  categoryContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12,
-  },
-  categoryChip: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: colors.cardBackground,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  categoryChipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  categoryChipText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.textSecondary,
-  },
-  categoryChipTextActive: {
-    color: colors.textLight,
-    fontWeight: '600',
-  },
-  categoryChipLocked: {
-    opacity: 0.7,
-  },
-  categoryChipTextLocked: {
-    color: colors.textTertiary,
-  },
-  addCategoryButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: colors.cardBackground,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-  },
-  addCategoryButtonDisabled: {
-    opacity: 0.5,
-  },
-  addCategoryButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.primary,
-  },
-  addCategoryButtonTextDisabled: {
-    color: colors.textTertiary,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 16,
-    padding: 24,
-    width: '80%',
-    maxWidth: 400,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 16,
-  },
-  modalMessage: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    marginBottom: 16,
-    lineHeight: 22,
-  },
-  modalInput: {
-    backgroundColor: colors.background,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    color: colors.text,
-    marginBottom: 16,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  modalButtonCancel: {
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modalButtonSecondary: {
-    backgroundColor: colors.cardBackground,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modalButtonSave: {
-    backgroundColor: colors.primary,
-  },
-  modalButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  modalButtonTextSave: {
-    color: colors.textLight,
-  },
-  modeButtonContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  modeButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: colors.cardBackground,
-    borderWidth: 2,
-    borderColor: colors.border,
-    alignItems: 'center',
-  },
-  modeButtonActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.purpleLight,
-  },
-  modeButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  modeButtonTextActive: {
-    color: colors.primary,
-  },
-  durationContainer: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  durationInputGroup: {
-    flex: 1,
-  },
-  durationInput: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    textAlign: 'center',
-    color: colors.text,
-  },
-  durationLabel: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  hint: {
-    fontSize: 12,
-    color: colors.textTertiary,
-    marginTop: 4,
-  },
-  saveButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  saveButtonText: {
-    color: colors.textLight,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  customCategoryPillContainer: {
-    position: 'relative',
-  },
-  customCategoryDropdownAbsolute: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    marginTop: 4,
-    backgroundColor: colors.cardBackground,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    minWidth: 200,
-    zIndex: 1000,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  customCategoryDropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  customCategoryDropdownItemLast: {
-    borderBottomWidth: 0,
-  },
-  customCategoryDropdownItemContent: {
-    flex: 1,
-    paddingVertical: 4,
-  },
-  customCategoryDropdownItemContentActive: {
-    backgroundColor: colors.primaryLight,
-  },
-  customCategoryDropdownItemText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.text,
-  },
-  customCategoryDropdownItemTextActive: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  customCategoryActions: {
-    flexDirection: 'row',
-    gap: 8,
-    marginLeft: 8,
-  },
-  customCategoryActionButton: {
-    padding: 6,
-    minWidth: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  customCategoryActionButtonText: {
-    fontSize: 16,
-  },
-});
+const getStyles = (colors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: 16,
+    },
+    section: {
+      marginBottom: 24,
+    },
+    label: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.text,
+      marginBottom: 8,
+    },
+    input: {
+      backgroundColor: colors.cardBackground,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      color: colors.text,
+      ...Platform.select({
+        android: {
+          paddingVertical: 12,
+        },
+      }),
+    },
+    textArea: {
+      minHeight: 100,
+      paddingTop: 12,
+    },
+    categoryContainer: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 12,
+    },
+    categoryChip: {
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 20,
+      backgroundColor: colors.cardBackground,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    categoryChipActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    categoryChipText: {
+      fontSize: 14,
+      fontWeight: "500",
+      color: colors.textSecondary,
+    },
+    categoryChipTextActive: {
+      color: colors.textLight,
+      fontWeight: "600",
+    },
+    categoryChipLocked: {
+      opacity: 0.7,
+    },
+    categoryChipTextLocked: {
+      color: colors.textTertiary,
+    },
+    addCategoryButton: {
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      backgroundColor: colors.cardBackground,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+    },
+    addCategoryButtonDisabled: {
+      opacity: 0.5,
+    },
+    addCategoryButtonText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.primary,
+    },
+    addCategoryButtonTextDisabled: {
+      color: colors.textTertiary,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    modalContent: {
+      backgroundColor: colors.cardBackground,
+      borderRadius: 16,
+      padding: 24,
+      width: "80%",
+      maxWidth: 400,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: "600",
+      color: colors.text,
+      marginBottom: 16,
+    },
+    modalMessage: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      marginBottom: 16,
+      lineHeight: 22,
+    },
+    modalInput: {
+      backgroundColor: colors.background,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      color: colors.text,
+      marginBottom: 16,
+    },
+    modalButtons: {
+      flexDirection: "row",
+      gap: 12,
+    },
+    modalButton: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 8,
+      alignItems: "center",
+    },
+    modalButtonCancel: {
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    modalButtonSecondary: {
+      backgroundColor: colors.cardBackground,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    modalButtonSave: {
+      backgroundColor: colors.primary,
+    },
+    modalButtonText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.text,
+    },
+    modalButtonTextSave: {
+      color: colors.textLight,
+    },
+    modeButtonContainer: {
+      flexDirection: "row",
+      gap: 8,
+    },
+    modeButton: {
+      flex: 1,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      backgroundColor: colors.cardBackground,
+      borderWidth: 2,
+      borderColor: colors.border,
+      alignItems: "center",
+    },
+    modeButtonActive: {
+      borderColor: colors.primary,
+      backgroundColor: colors.purpleLight,
+    },
+    modeButtonText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
+    modeButtonTextActive: {
+      color: colors.primary,
+    },
+    durationContainer: {
+      flexDirection: "row",
+      gap: 16,
+    },
+    durationInputGroup: {
+      flex: 1,
+    },
+    durationInput: {
+      backgroundColor: colors.cardBackground,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      textAlign: "center",
+      color: colors.text,
+    },
+    durationLabel: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: "center",
+      marginTop: 4,
+    },
+    hint: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      marginTop: 4,
+    },
+    saveButton: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+    },
+    saveButtonText: {
+      color: colors.textLight,
+      fontSize: 16,
+      fontWeight: "600",
+    },
+    customCategoryPillContainer: {
+      position: "relative",
+    },
+    customCategoryDropdownAbsolute: {
+      position: "absolute",
+      top: "100%",
+      left: 0,
+      marginTop: 4,
+      backgroundColor: colors.cardBackground,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      minWidth: 200,
+      zIndex: 1000,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    customCategoryDropdownItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderLight,
+    },
+    customCategoryDropdownItemLast: {
+      borderBottomWidth: 0,
+    },
+    customCategoryDropdownItemContent: {
+      flex: 1,
+      paddingVertical: 4,
+    },
+    customCategoryDropdownItemContentActive: {
+      backgroundColor: colors.primaryLight,
+    },
+    customCategoryDropdownItemText: {
+      fontSize: 14,
+      fontWeight: "500",
+      color: colors.text,
+    },
+    customCategoryDropdownItemTextActive: {
+      color: colors.primary,
+      fontWeight: "600",
+    },
+    customCategoryActions: {
+      flexDirection: "row",
+      gap: 8,
+      marginLeft: 8,
+    },
+    customCategoryActionButton: {
+      padding: 6,
+      minWidth: 32,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    customCategoryActionButtonText: {
+      fontSize: 16,
+    },
+  });

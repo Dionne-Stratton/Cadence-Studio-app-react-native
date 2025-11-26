@@ -1,9 +1,12 @@
 import React from "react";
-import { NavigationContainer, getFocusedRouteNameFromRoute } from "@react-navigation/native";
+import {
+  NavigationContainer,
+  getFocusedRouteNameFromRoute,
+  DefaultTheme,
+} from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../theme";
 
@@ -35,6 +38,10 @@ function SessionsStack() {
         headerTintColor: colors.textLight,
         headerTitleStyle: {
           fontWeight: "bold",
+        },
+        // Make sure stack scenes use themed background
+        contentStyle: {
+          backgroundColor: colors.background || "#000",
         },
       }}
     >
@@ -87,6 +94,9 @@ function LibraryStack() {
         headerTitleStyle: {
           fontWeight: "bold",
         },
+        contentStyle: {
+          backgroundColor: colors.background || "#000",
+        },
       }}
     >
       <Stack.Screen
@@ -119,6 +129,9 @@ function SettingsStack() {
         headerTitleStyle: {
           fontWeight: "bold",
         },
+        contentStyle: {
+          backgroundColor: colors.background || "#000",
+        },
       }}
     >
       <Stack.Screen
@@ -139,13 +152,29 @@ export default function AppNavigator() {
   const insets = useSafeAreaInsets();
   const colors = useTheme();
 
+  // Teach React Navigation to use your app's background instead of white
+  const navigationTheme = {
+    ...DefaultTheme,
+    colors: {
+      ...DefaultTheme.colors,
+      background: colors.background || "#000",
+      card: colors.tabBarBackground || colors.background || "#000",
+      text: colors.textPrimary || colors.textLight || DefaultTheme.colors.text,
+      border: colors.borderLight || DefaultTheme.colors.border,
+    },
+  };
+
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navigationTheme}>
       <Tab.Navigator
+        // Ensure scene backgrounds match theme (helps avoid white flashes)
+        sceneContainerStyle={{
+          backgroundColor: colors.background || "#000",
+        }}
         screenOptions={({ route }) => {
           // Check if RunSession is active by checking the focused route name
           const routeName = getFocusedRouteNameFromRoute(route);
-          const isRunSessionActive = routeName === 'RunSession';
+          const isRunSessionActive = routeName === "RunSession";
 
           return {
             tabBarIcon: ({ focused, color, size }) => {
@@ -166,14 +195,16 @@ export default function AppNavigator() {
             tabBarActiveTintColor: colors.primary,
             tabBarInactiveTintColor: colors.textSecondary,
             headerShown: false,
-            tabBarStyle: isRunSessionActive ? { display: 'none' } : {
-              backgroundColor: colors.tabBarBackground,
-              borderTopWidth: 1,
-              borderTopColor: colors.borderLight,
-              paddingBottom: Math.max(insets.bottom, 5),
-              paddingTop: 5,
-              height: 60 + Math.max(insets.bottom, 0),
-            },
+            tabBarStyle: isRunSessionActive
+              ? { display: "none" }
+              : {
+                  backgroundColor: colors.tabBarBackground,
+                  borderTopWidth: 1,
+                  borderTopColor: colors.borderLight,
+                  paddingBottom: Math.max(insets.bottom, 5),
+                  paddingTop: 5,
+                  height: 60 + Math.max(insets.bottom, 0),
+                },
           };
         }}
       >
@@ -190,7 +221,7 @@ export default function AppNavigator() {
             tabPress: (e) => {
               // Prevent tab press if RunSession is active
               const routeName = getFocusedRouteNameFromRoute(route);
-              if (routeName === 'RunSession') {
+              if (routeName === "RunSession") {
                 e.preventDefault();
               }
             },
