@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,43 +10,59 @@ import {
   Alert,
   Switch,
   ScrollView,
-} from 'react-native';
-import useStore from '../store';
-import { BlockType, BlockMode, getBlockTimingSummary, getBlockTypeColor, BUILT_IN_CATEGORIES } from '../types';
-import { generateId } from '../utils/id';
-import { useTheme } from '../theme';
-import ProUpgradeModal from './ProUpgradeModal';
+} from "react-native";
+import useStore from "../store";
+import {
+  BlockType,
+  BlockMode,
+  getBlockTimingSummary,
+  getBlockTypeColor,
+  BUILT_IN_CATEGORIES,
+} from "../types";
+import { generateId } from "../utils/id";
+import { useTheme } from "../theme";
+import ProUpgradeModal from "./ProUpgradeModal";
 
-export default function AddBlockModal({ visible, onClose, onAddBlock, navigation }) {
+export default function AddBlockModal({
+  visible,
+  onClose,
+  onAddBlock,
+  navigation,
+}) {
   const colors = useTheme();
   const blockTemplates = useStore((state) => state.blockTemplates);
   const settings = useStore((state) => state.settings);
   const addBlockTemplate = useStore((state) => state.addBlockTemplate);
   const updateSettings = useStore((state) => state.updateSettings);
-  const [tab, setTab] = useState('library'); // 'library' or 'custom'
-  const [searchQuery, setSearchQuery] = useState('');
+  const [tab, setTab] = useState("library"); // 'library' or 'custom'
+  const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState(null);
 
   // Custom block form state
-  const [customLabel, setCustomLabel] = useState('');
+  const [customLabel, setCustomLabel] = useState("");
   const [customCategory, setCustomCategory] = useState(BUILT_IN_CATEGORIES[0]);
   const [customMode, setCustomMode] = useState(BlockMode.DURATION);
   const [customMinutes, setCustomMinutes] = useState(0);
   const [customSeconds, setCustomSeconds] = useState(30);
   const [customReps, setCustomReps] = useState(10);
   const [customPerRepSeconds, setCustomPerRepSeconds] = useState(5);
-  const [saveToLibrary, setSaveToLibrary] = useState(settings.defaultSaveToLibrary ?? true);
+  const [saveToLibrary, setSaveToLibrary] = useState(
+    settings.defaultSaveToLibrary ?? true
+  );
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryName, setNewCategoryName] = useState("");
   const [proModalVisible, setProModalVisible] = useState(false);
   const [proModalLimitType, setProModalLimitType] = useState(null);
-  
+
   // Custom category dropdown state (for filtering only)
-  const [showCustomCategoryDropdown, setShowCustomCategoryDropdown] = useState(false);
+  const [showCustomCategoryDropdown, setShowCustomCategoryDropdown] =
+    useState(false);
 
   // Filter to only activities (rest/transition are not in library)
-  const activities = blockTemplates.filter(template => template.type === BlockType.ACTIVITY);
-  
+  const activities = blockTemplates.filter(
+    (template) => template.type === BlockType.ACTIVITY
+  );
+
   // Separate built-in and custom categories
   const builtInCategories = React.useMemo(() => {
     return [...BUILT_IN_CATEGORIES];
@@ -55,30 +71,30 @@ export default function AddBlockModal({ visible, onClose, onAddBlock, navigation
   const customCategories = React.useMemo(() => {
     return settings.customCategories || [];
   }, [settings.customCategories]);
-  
+
   // Get all available categories (built-in + custom, with custom shown even if not Pro)
   const allCategories = React.useMemo(() => {
     return [...builtInCategories, ...customCategories];
   }, [builtInCategories, customCategories]);
-  
+
   // Check if a category is custom (not built-in)
   const isCustomCategory = (cat) => {
     return !BUILT_IN_CATEGORIES.includes(cat);
   };
-  
+
   const handleCategorySelect = (cat) => {
     // If it's a custom category and user is not Pro, show Pro modal
     if (isCustomCategory(cat) && !settings.isProUser) {
-      setProModalLimitType('customCategory');
+      setProModalLimitType("customCategory");
       setProModalVisible(true);
       return;
     }
     setCustomCategory(cat);
   };
-  
+
   const handleAddCategory = () => {
     if (!settings.isProUser) {
-      setProModalLimitType('customCategory');
+      setProModalLimitType("customCategory");
       setProModalVisible(true);
       return;
     }
@@ -89,14 +105,14 @@ export default function AddBlockModal({ visible, onClose, onAddBlock, navigation
   useEffect(() => {
     setSaveToLibrary(settings.defaultSaveToLibrary ?? true);
   }, [visible, settings.defaultSaveToLibrary]);
-  
+
   const filteredTemplates = activities.filter((template) => {
     const matchesSearch =
       !searchQuery ||
       template.label.toLowerCase().includes(searchQuery.toLowerCase());
     // Filter by category
     if (filterCategory !== null) {
-      const templateCategory = template.category || 'Uncategorized';
+      const templateCategory = template.category || "Uncategorized";
       if (templateCategory !== filterCategory) {
         return false;
       }
@@ -109,6 +125,8 @@ export default function AddBlockModal({ visible, onClose, onAddBlock, navigation
       id: generateId(),
       templateId: template.id,
       label: template.label,
+      notes: template.notes ?? "",
+      url: template.url ?? "",
       type: template.type,
       category: template.category || null, // Include category from template
       mode: template.mode,
@@ -125,11 +143,14 @@ export default function AddBlockModal({ visible, onClose, onAddBlock, navigation
 
   const handleAddCustom = async () => {
     if (!customLabel.trim()) {
-      Alert.alert('Validation Error', 'Please enter a name for this activity.');
+      Alert.alert("Validation Error", "Please enter a name for this activity.");
       return;
     }
     if (!customCategory) {
-      Alert.alert('Validation Error', 'Please select a category for this activity.');
+      Alert.alert(
+        "Validation Error",
+        "Please select a category for this activity."
+      );
       return;
     }
 
@@ -138,54 +159,54 @@ export default function AddBlockModal({ visible, onClose, onAddBlock, navigation
       durationSeconds = customMinutes * 60 + customSeconds;
       if (durationSeconds <= 0) {
         Alert.alert(
-          'Validation Error',
-          'Duration must be greater than 0 seconds.'
+          "Validation Error",
+          "Duration must be greater than 0 seconds."
         );
         return;
       }
     } else if (customMode === BlockMode.REPS) {
       if (customReps <= 0 || customPerRepSeconds <= 0) {
         Alert.alert(
-          'Validation Error',
-          'Reps and seconds per rep must be greater than 0.'
+          "Validation Error",
+          "Reps and seconds per rep must be greater than 0."
         );
         return;
       }
     }
 
-        let templateId = null;
-        
-        // If save to library is checked, check activity limit for free users
-        if (saveToLibrary) {
-          // Check activity limit (20 max for free users)
-          if (!settings.isProUser && activities.length >= 20) {
-            setProModalLimitType('activities');
-            setProModalVisible(true);
-            return;
-          }
-          
-          const template = {
-            label: customLabel.trim(),
-            type: BlockType.ACTIVITY,
-            category: customCategory === 'Uncategorized' ? null : customCategory,
-            mode: customMode,
-            ...(customMode === BlockMode.DURATION
-              ? { durationSeconds }
-              : {
-                  reps: customReps,
-                  perRepSeconds: customPerRepSeconds,
-                }),
-          };
-          const savedTemplate = await addBlockTemplate(template);
-          templateId = savedTemplate.id;
-        }
+    let templateId = null;
+
+    // If save to library is checked, check activity limit for free users
+    if (saveToLibrary) {
+      // Check activity limit (20 max for free users)
+      if (!settings.isProUser && activities.length >= 20) {
+        setProModalLimitType("activities");
+        setProModalVisible(true);
+        return;
+      }
+
+      const template = {
+        label: customLabel.trim(),
+        type: BlockType.ACTIVITY,
+        category: customCategory === "Uncategorized" ? null : customCategory,
+        mode: customMode,
+        ...(customMode === BlockMode.DURATION
+          ? { durationSeconds }
+          : {
+              reps: customReps,
+              perRepSeconds: customPerRepSeconds,
+            }),
+      };
+      const savedTemplate = await addBlockTemplate(template);
+      templateId = savedTemplate.id;
+    }
 
     const blockInstance = {
       id: generateId(),
       templateId: templateId, // Will be null if not saved to library
       label: customLabel.trim(),
       type: BlockType.ACTIVITY,
-      category: customCategory === 'Uncategorized' ? null : customCategory,
+      category: customCategory === "Uncategorized" ? null : customCategory,
       mode: customMode,
       ...(customMode === BlockMode.DURATION
         ? { durationSeconds }
@@ -196,9 +217,9 @@ export default function AddBlockModal({ visible, onClose, onAddBlock, navigation
     };
 
     onAddBlock(blockInstance);
-    
+
     // Reset form
-    setCustomLabel('');
+    setCustomLabel("");
     setCustomCategory(BUILT_IN_CATEGORIES[0]);
     setCustomMode(BlockMode.DURATION);
     setCustomMinutes(0);
@@ -206,17 +227,20 @@ export default function AddBlockModal({ visible, onClose, onAddBlock, navigation
     setCustomReps(10);
     setCustomPerRepSeconds(5);
     setSaveToLibrary(settings.defaultSaveToLibrary ?? true);
-    
+
     onClose();
   };
 
   const renderLibraryItem = ({ item }) => {
     const blockTypeColor = getBlockTypeColor(item.type, colors);
-    const category = item.category || 'Uncategorized';
+    const category = item.category || "Uncategorized";
 
     return (
       <TouchableOpacity
-        style={[styles.libraryItem, { borderLeftWidth: 4, borderLeftColor: blockTypeColor }]}
+        style={[
+          styles.libraryItem,
+          { borderLeftWidth: 4, borderLeftColor: blockTypeColor },
+        ]}
         onPress={() => handleAddFromLibrary(item)}
       >
         <View style={styles.libraryItemContent}>
@@ -252,28 +276,31 @@ export default function AddBlockModal({ visible, onClose, onAddBlock, navigation
 
         <View style={styles.tabContainer}>
           <TouchableOpacity
-            style={[styles.tab, tab === 'library' && styles.tabActive]}
-            onPress={() => setTab('library')}
+            style={[styles.tab, tab === "library" && styles.tabActive]}
+            onPress={() => setTab("library")}
           >
             <Text
-              style={[styles.tabText, tab === 'library' && styles.tabTextActive]}
+              style={[
+                styles.tabText,
+                tab === "library" && styles.tabTextActive,
+              ]}
             >
               From Library
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.tab, tab === 'custom' && styles.tabActive]}
-            onPress={() => setTab('custom')}
+            style={[styles.tab, tab === "custom" && styles.tabActive]}
+            onPress={() => setTab("custom")}
           >
             <Text
-              style={[styles.tabText, tab === 'custom' && styles.tabTextActive]}
+              style={[styles.tabText, tab === "custom" && styles.tabTextActive]}
             >
               Add Custom
             </Text>
           </TouchableOpacity>
         </View>
 
-        {tab === 'library' ? (
+        {tab === "library" ? (
           <View style={styles.libraryContent}>
             <View style={styles.searchContainer}>
               <TextInput
@@ -285,8 +312,8 @@ export default function AddBlockModal({ visible, onClose, onAddBlock, navigation
               />
             </View>
             <View style={styles.filterWrapper}>
-              <ScrollView 
-                horizontal 
+              <ScrollView
+                horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.filterContainer}
               >
@@ -307,28 +334,36 @@ export default function AddBlockModal({ visible, onClose, onAddBlock, navigation
                   </Text>
                 </TouchableOpacity>
                 {/* Custom Categories Dropdown - pill button */}
-                {customCategories.length > 0 && (() => {
-                  const selectedCustomCategory = customCategories.find(cat => filterCategory === cat);
-                  const displayText = selectedCustomCategory || 'Custom';
-                  return (
-                    <TouchableOpacity
-                      style={[
-                        styles.filterButton,
-                        selectedCustomCategory && styles.filterButtonActive,
-                      ]}
-                      onPress={() => setShowCustomCategoryDropdown(!showCustomCategoryDropdown)}
-                    >
-                      <Text
+                {customCategories.length > 0 &&
+                  (() => {
+                    const selectedCustomCategory = customCategories.find(
+                      (cat) => filterCategory === cat
+                    );
+                    const displayText = selectedCustomCategory || "Custom";
+                    return (
+                      <TouchableOpacity
                         style={[
-                          styles.filterButtonText,
-                          selectedCustomCategory && styles.filterButtonTextActive,
+                          styles.filterButton,
+                          selectedCustomCategory && styles.filterButtonActive,
                         ]}
+                        onPress={() =>
+                          setShowCustomCategoryDropdown(
+                            !showCustomCategoryDropdown
+                          )
+                        }
                       >
-                        {displayText} {showCustomCategoryDropdown ? '▼' : '▶'}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })()}
+                        <Text
+                          style={[
+                            styles.filterButtonText,
+                            selectedCustomCategory &&
+                              styles.filterButtonTextActive,
+                          ]}
+                        >
+                          {displayText} {showCustomCategoryDropdown ? "▼" : "▶"}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })()}
                 {/* Only show built-in categories as pills */}
                 {builtInCategories.map((category) => (
                   <TouchableOpacity
@@ -342,7 +377,8 @@ export default function AddBlockModal({ visible, onClose, onAddBlock, navigation
                     <Text
                       style={[
                         styles.filterButtonText,
-                        filterCategory === category && styles.filterButtonTextActive,
+                        filterCategory === category &&
+                          styles.filterButtonTextActive,
                       ]}
                     >
                       {category}
@@ -359,8 +395,10 @@ export default function AddBlockModal({ visible, onClose, onAddBlock, navigation
                         key={category}
                         style={[
                           styles.customCategoryDropdownItem,
-                          filterCategory === category && styles.customCategoryDropdownItemActive,
-                          index === customCategories.length - 1 && styles.customCategoryDropdownItemLast,
+                          filterCategory === category &&
+                            styles.customCategoryDropdownItemActive,
+                          index === customCategories.length - 1 &&
+                            styles.customCategoryDropdownItemLast,
                         ]}
                         onPress={() => {
                           setFilterCategory(category);
@@ -370,7 +408,8 @@ export default function AddBlockModal({ visible, onClose, onAddBlock, navigation
                         <Text
                           style={[
                             styles.customCategoryDropdownItemText,
-                            filterCategory === category && styles.customCategoryDropdownItemTextActive,
+                            filterCategory === category &&
+                              styles.customCategoryDropdownItemTextActive,
                           ]}
                         >
                           {category}
@@ -397,8 +436,8 @@ export default function AddBlockModal({ visible, onClose, onAddBlock, navigation
             />
           </View>
         ) : (
-          <ScrollView 
-            style={styles.customContentScroll} 
+          <ScrollView
+            style={styles.customContentScroll}
             contentContainerStyle={styles.customContent}
           >
             <Text style={styles.label}>Name *</Text>
@@ -431,12 +470,13 @@ export default function AddBlockModal({ visible, onClose, onAddBlock, navigation
                       <Text
                         style={[
                           styles.categoryChipText,
-                          customCategory === cat && styles.categoryChipTextActive,
+                          customCategory === cat &&
+                            styles.categoryChipTextActive,
                           isLocked && styles.categoryChipTextLocked,
                         ]}
                       >
                         {cat}
-                        {isLocked && ' 🔒'}
+                        {isLocked && " 🔒"}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -447,15 +487,25 @@ export default function AddBlockModal({ visible, onClose, onAddBlock, navigation
                   style={styles.addCategoryButton}
                   onPress={handleAddCategory}
                 >
-                  <Text style={styles.addCategoryButtonText}>+ Add Category</Text>
+                  <Text style={styles.addCategoryButtonText}>
+                    + Add Category
+                  </Text>
                 </TouchableOpacity>
               )}
               {!settings.isProUser && (
                 <TouchableOpacity
-                  style={[styles.addCategoryButton, styles.addCategoryButtonDisabled]}
+                  style={[
+                    styles.addCategoryButton,
+                    styles.addCategoryButtonDisabled,
+                  ]}
                   onPress={handleAddCategory}
                 >
-                  <Text style={[styles.addCategoryButtonText, styles.addCategoryButtonTextDisabled]}>
+                  <Text
+                    style={[
+                      styles.addCategoryButtonText,
+                      styles.addCategoryButtonTextDisabled,
+                    ]}
+                  >
                     🔒 + Add Category (Pro)
                   </Text>
                 </TouchableOpacity>
@@ -605,7 +655,7 @@ export default function AddBlockModal({ visible, onClose, onAddBlock, navigation
                   style={[styles.modalButton, styles.modalCancelButton]}
                   onPress={() => {
                     setShowAddCategoryModal(false);
-                    setNewCategoryName('');
+                    setNewCategoryName("");
                   }}
                 >
                   <Text style={styles.modalButtonText}>Cancel</Text>
@@ -614,17 +664,31 @@ export default function AddBlockModal({ visible, onClose, onAddBlock, navigation
                   style={[styles.modalButton, styles.modalConfirmButton]}
                   onPress={() => {
                     if (!newCategoryName.trim()) {
-                      Alert.alert('Validation Error', 'Category name cannot be empty.');
+                      Alert.alert(
+                        "Validation Error",
+                        "Category name cannot be empty."
+                      );
                       return;
                     }
                     const trimmedName = newCategoryName.trim();
-                    if (BUILT_IN_CATEGORIES.includes(trimmedName) || settings.customCategories?.includes(trimmedName)) {
-                      Alert.alert('Validation Error', 'Category already exists.');
+                    if (
+                      BUILT_IN_CATEGORIES.includes(trimmedName) ||
+                      settings.customCategories?.includes(trimmedName)
+                    ) {
+                      Alert.alert(
+                        "Validation Error",
+                        "Category already exists."
+                      );
                       return;
                     }
-                    updateSettings({ customCategories: [...(settings.customCategories || []), trimmedName] });
+                    updateSettings({
+                      customCategories: [
+                        ...(settings.customCategories || []),
+                        trimmedName,
+                      ],
+                    });
                     setCustomCategory(trimmedName);
-                    setNewCategoryName('');
+                    setNewCategoryName("");
                     setShowAddCategoryModal(false);
                   }}
                 >
@@ -634,7 +698,6 @@ export default function AddBlockModal({ visible, onClose, onAddBlock, navigation
             </View>
           </View>
         </Modal>
-
       </View>
 
       {/* Pro Upgrade Modal */}
@@ -646,7 +709,7 @@ export default function AddBlockModal({ visible, onClose, onAddBlock, navigation
           setProModalVisible(false);
           onClose();
           if (navigation) {
-            navigation.getParent()?.navigate('Settings', { screen: 'GoPro' });
+            navigation.getParent()?.navigate("Settings", { screen: "GoPro" });
           }
         }}
       />
@@ -654,428 +717,428 @@ export default function AddBlockModal({ visible, onClose, onAddBlock, navigation
   );
 }
 
-const getStyles = (colors) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: colors.cardBackground,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  closeButton: {
-    padding: 8,
-    minWidth: 60,
-  },
-  closeButtonText: {
-    color: colors.primary,
-    fontSize: 16,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: colors.cardBackground,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  tabActive: {
-    borderBottomColor: colors.primary,
-  },
-  tabText: {
-    fontSize: 16,
-    color: colors.textSecondary,
-  },
-  tabTextActive: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  libraryContent: {
-    flex: 1,
-  },
-  searchContainer: {
-    padding: 16,
-    paddingBottom: 8,
-    backgroundColor: colors.background,
-  },
-  searchInput: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: colors.text,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  filterWrapper: {
-    paddingVertical: 8,
-    paddingBottom: 12,
-    minHeight: 56,
-    position: 'relative',
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 8,
-    alignItems: 'center',
-    minHeight: 40,
-    paddingBottom: 4,
-  },
-  filterButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: colors.cardBackground,
-    borderWidth: 1,
-    borderColor: colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-    minWidth: 60,
-  },
-  filterButtonActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  filterButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.textSecondary,
-  },
-  filterButtonTextActive: {
-    color: colors.textLight,
-    fontWeight: '600',
-  },
-  listContent: {
-    paddingTop: 8,
-  },
-  libraryItem: {
-    backgroundColor: colors.cardBackground,
-    padding: 16,
-    paddingLeft: 12, // Account for border
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  libraryItemContent: {
-    flex: 1,
-  },
-  libraryItemLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  libraryItemMeta: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  libraryItemCategory: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  libraryItemTiming: {
-    fontSize: 14,
-    color: colors.primary,
-    fontWeight: '500',
-  },
-  customContentScroll: {
-    flex: 1,
-  },
-  customContent: {
-    padding: 16,
-  },
-  saveToLibraryContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    backgroundColor: colors.cardBackground,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginTop: 24,
-    marginBottom: 16,
-  },
-  saveToLibraryContent: {
-    flex: 1,
-    marginRight: 12,
-  },
-  saveToLibraryLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  saveToLibraryDescription: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  categoryContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12,
-  },
-  categoryChip: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: colors.cardBackground,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  categoryChipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  categoryChipDisabled: {
-    backgroundColor: colors.backgroundMedium,
-    borderColor: colors.border,
-    opacity: 0.7,
-  },
-  categoryChipText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.textSecondary,
-  },
-  categoryChipTextActive: {
-    color: colors.textLight,
-    fontWeight: '600',
-  },
-  categoryChipLocked: {
-    opacity: 0.7,
-  },
-  categoryChipTextLocked: {
-    color: colors.textTertiary,
-  },
-  categoryChipTextDisabled: {
-    color: colors.textTertiary,
-  },
-  addCategoryButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: colors.cardBackground,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-  },
-  addCategoryButtonDisabled: {
-    opacity: 0.5,
-  },
-  addCategoryButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.primary,
-  },
-  addCategoryButtonTextDisabled: {
-    color: colors.textTertiary,
-  },
-  input: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    color: colors.text,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  modeButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: colors.cardBackground,
-    borderWidth: 2,
-    borderColor: colors.border,
-    alignItems: 'center',
-  },
-  modeButtonActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.purpleLight,
-  },
-  modeButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  modeButtonTextActive: {
-    color: colors.primary,
-  },
-  durationRow: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  durationGroup: {
-    flex: 1,
-  },
-  durationInput: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    textAlign: 'center',
-    color: colors.text,
-  },
-  durationLabel: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  addButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  addButtonText: {
-    color: colors.textLight,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  emptyContainer: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    marginBottom: 4,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: colors.textTertiary,
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 12,
-    padding: 24,
-    width: '80%',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 16,
-  },
-  modalInput: {
-    width: '100%',
-    backgroundColor: colors.background,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    color: colors.text,
-    marginBottom: 20,
-  },
-  modalButtonRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  modalCancelButton: {
-    backgroundColor: colors.backgroundMedium,
-  },
-  modalConfirmButton: {
-    backgroundColor: colors.primary,
-  },
-  modalButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textLight,
-  },
-  customCategoryDropdownContainer: {
-    position: 'absolute',
-    top: '100%',
-    left: 16,
-    marginTop: 4,
-    zIndex: 1000,
-  },
-  customCategoryDropdown: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    minWidth: 150,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    overflow: 'hidden',
-  },
-  customCategoryDropdownItem: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  customCategoryDropdownItemActive: {
-    backgroundColor: colors.primaryLight,
-  },
-  customCategoryDropdownItemLast: {
-    borderBottomWidth: 0,
-  },
-  customCategoryDropdownItemText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.text,
-  },
-  customCategoryDropdownItemTextActive: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-});
-
+const getStyles = (colors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      backgroundColor: colors.cardBackground,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderLight,
+    },
+    closeButton: {
+      padding: 8,
+      minWidth: 60,
+    },
+    closeButtonText: {
+      color: colors.primary,
+      fontSize: 16,
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: colors.text,
+    },
+    tabContainer: {
+      flexDirection: "row",
+      backgroundColor: colors.cardBackground,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderLight,
+    },
+    tab: {
+      flex: 1,
+      paddingVertical: 12,
+      alignItems: "center",
+      borderBottomWidth: 2,
+      borderBottomColor: "transparent",
+    },
+    tabActive: {
+      borderBottomColor: colors.primary,
+    },
+    tabText: {
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
+    tabTextActive: {
+      color: colors.primary,
+      fontWeight: "600",
+    },
+    libraryContent: {
+      flex: 1,
+    },
+    searchContainer: {
+      padding: 16,
+      paddingBottom: 8,
+      backgroundColor: colors.background,
+    },
+    searchInput: {
+      backgroundColor: colors.cardBackground,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 16,
+      color: colors.text,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    filterWrapper: {
+      paddingVertical: 8,
+      paddingBottom: 12,
+      minHeight: 56,
+      position: "relative",
+    },
+    filterContainer: {
+      flexDirection: "row",
+      paddingHorizontal: 16,
+      gap: 8,
+      alignItems: "center",
+      minHeight: 40,
+      paddingBottom: 4,
+    },
+    filterButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+      backgroundColor: colors.cardBackground,
+      borderWidth: 1,
+      borderColor: colors.border,
+      justifyContent: "center",
+      alignItems: "center",
+      minWidth: 60,
+    },
+    filterButtonActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    filterButtonText: {
+      fontSize: 14,
+      fontWeight: "500",
+      color: colors.textSecondary,
+    },
+    filterButtonTextActive: {
+      color: colors.textLight,
+      fontWeight: "600",
+    },
+    listContent: {
+      paddingTop: 8,
+    },
+    libraryItem: {
+      backgroundColor: colors.cardBackground,
+      padding: 16,
+      paddingLeft: 12, // Account for border
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderLight,
+    },
+    libraryItemContent: {
+      flex: 1,
+    },
+    libraryItemLabel: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.text,
+      marginBottom: 4,
+    },
+    libraryItemMeta: {
+      flexDirection: "row",
+      gap: 12,
+    },
+    libraryItemCategory: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      fontWeight: "500",
+    },
+    libraryItemTiming: {
+      fontSize: 14,
+      color: colors.primary,
+      fontWeight: "500",
+    },
+    customContentScroll: {
+      flex: 1,
+    },
+    customContent: {
+      padding: 16,
+    },
+    saveToLibraryContainer: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: 16,
+      paddingHorizontal: 12,
+      backgroundColor: colors.cardBackground,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginTop: 24,
+      marginBottom: 16,
+    },
+    saveToLibraryContent: {
+      flex: 1,
+      marginRight: 12,
+    },
+    saveToLibraryLabel: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.text,
+      marginBottom: 4,
+    },
+    saveToLibraryDescription: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    section: {
+      marginBottom: 24,
+    },
+    label: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.text,
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    categoryContainer: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 12,
+    },
+    categoryChip: {
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 20,
+      backgroundColor: colors.cardBackground,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    categoryChipActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    categoryChipDisabled: {
+      backgroundColor: colors.backgroundMedium,
+      borderColor: colors.border,
+      opacity: 0.7,
+    },
+    categoryChipText: {
+      fontSize: 14,
+      fontWeight: "500",
+      color: colors.textSecondary,
+    },
+    categoryChipTextActive: {
+      color: colors.textLight,
+      fontWeight: "600",
+    },
+    categoryChipLocked: {
+      opacity: 0.7,
+    },
+    categoryChipTextLocked: {
+      color: colors.textTertiary,
+    },
+    categoryChipTextDisabled: {
+      color: colors.textTertiary,
+    },
+    addCategoryButton: {
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      backgroundColor: colors.cardBackground,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+    },
+    addCategoryButtonDisabled: {
+      opacity: 0.5,
+    },
+    addCategoryButtonText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.primary,
+    },
+    addCategoryButtonTextDisabled: {
+      color: colors.textTertiary,
+    },
+    input: {
+      backgroundColor: colors.cardBackground,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      color: colors.text,
+    },
+    buttonRow: {
+      flexDirection: "row",
+      gap: 8,
+    },
+    modeButton: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 8,
+      backgroundColor: colors.cardBackground,
+      borderWidth: 2,
+      borderColor: colors.border,
+      alignItems: "center",
+    },
+    modeButtonActive: {
+      borderColor: colors.primary,
+      backgroundColor: colors.purpleLight,
+    },
+    modeButtonText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
+    modeButtonTextActive: {
+      color: colors.primary,
+    },
+    durationRow: {
+      flexDirection: "row",
+      gap: 16,
+    },
+    durationGroup: {
+      flex: 1,
+    },
+    durationInput: {
+      backgroundColor: colors.cardBackground,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      textAlign: "center",
+      color: colors.text,
+    },
+    durationLabel: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: "center",
+      marginTop: 4,
+    },
+    addButton: {
+      backgroundColor: colors.primary,
+      borderRadius: 8,
+      paddingVertical: 16,
+      alignItems: "center",
+      marginTop: 24,
+    },
+    addButtonText: {
+      color: colors.textLight,
+      fontSize: 16,
+      fontWeight: "600",
+    },
+    emptyContainer: {
+      padding: 40,
+      alignItems: "center",
+    },
+    emptyText: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      marginBottom: 4,
+    },
+    emptySubtext: {
+      fontSize: 14,
+      color: colors.textTertiary,
+    },
+    modalOverlay: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+    },
+    modalContent: {
+      backgroundColor: colors.cardBackground,
+      borderRadius: 12,
+      padding: 24,
+      width: "80%",
+      alignItems: "center",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: "600",
+      color: colors.text,
+      marginBottom: 16,
+    },
+    modalInput: {
+      width: "100%",
+      backgroundColor: colors.background,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      color: colors.text,
+      marginBottom: 20,
+    },
+    modalButtonRow: {
+      flexDirection: "row",
+      gap: 12,
+    },
+    modalButton: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 8,
+      alignItems: "center",
+    },
+    modalCancelButton: {
+      backgroundColor: colors.backgroundMedium,
+    },
+    modalConfirmButton: {
+      backgroundColor: colors.primary,
+    },
+    modalButtonText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.textLight,
+    },
+    customCategoryDropdownContainer: {
+      position: "absolute",
+      top: "100%",
+      left: 16,
+      marginTop: 4,
+      zIndex: 1000,
+    },
+    customCategoryDropdown: {
+      backgroundColor: colors.cardBackground,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      minWidth: 150,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+      overflow: "hidden",
+    },
+    customCategoryDropdownItem: {
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderLight,
+    },
+    customCategoryDropdownItemActive: {
+      backgroundColor: colors.primaryLight,
+    },
+    customCategoryDropdownItemLast: {
+      borderBottomWidth: 0,
+    },
+    customCategoryDropdownItemText: {
+      fontSize: 14,
+      fontWeight: "500",
+      color: colors.text,
+    },
+    customCategoryDropdownItemTextActive: {
+      color: colors.primary,
+      fontWeight: "600",
+    },
+  });
