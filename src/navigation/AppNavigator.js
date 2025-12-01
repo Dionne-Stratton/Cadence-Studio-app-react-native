@@ -53,12 +53,12 @@ function SessionsStack() {
       <Stack.Screen
         name="SessionBuilder"
         component={SessionBuilderScreen}
-        options={{ title: "Session Builder" }}
+        options={{ title: "Session Builder", headerShown: false }}
       />
       <Stack.Screen
         name="SessionPreview"
         component={SessionPreviewScreen}
-        options={{ title: "Session Preview" }}
+        options={{ title: "Session Preview", headerShown: false }}
       />
       <Stack.Screen
         name="RunSession"
@@ -73,6 +73,7 @@ function SessionsStack() {
         name="BlockEdit"
         component={BlockEditScreen}
         options={({ route }) => ({
+          headerShown: false,
           title: route.params?.blockId ? "Edit Activity" : "Add Activity",
         })}
       />
@@ -109,6 +110,7 @@ function LibraryStack() {
         component={BlockEditScreen}
         options={({ route }) => ({
           title: route.params?.blockId ? "Edit Activity" : "Add Activity",
+          headerShown: false,
         })}
       />
     </Stack.Navigator>

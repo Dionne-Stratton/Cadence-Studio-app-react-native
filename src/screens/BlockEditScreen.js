@@ -11,16 +11,10 @@ import {
   Modal,
 } from "react-native";
 import useStore from "../store";
-import {
-  BlockType,
-  BlockMode,
-  getBlockTypeColor,
-  BUILT_IN_CATEGORIES,
-} from "../types";
-import { generateId } from "../utils/id";
+import { BlockType, BlockMode, BUILT_IN_CATEGORIES } from "../types";
 import { useTheme } from "../theme";
 import ProUpgradeModal from "../components/ProUpgradeModal";
-import { Ionicons } from "@expo/vector-icons";
+import AppHeader from "../components/AppHeader";
 
 export default function BlockEditScreen({ navigation, route }) {
   const { blockId, blockInstanceId, sessionId, blockIndex, blockInstanceData } =
@@ -45,18 +39,13 @@ export default function BlockEditScreen({ navigation, route }) {
     sessionId !== undefined;
 
   // Get the existing block - either from library or from session
-  // Use useMemo to recompute when dependencies change
-  // If blockInstanceData is provided, use it (for unsaved items like duplicates)
-  // Otherwise, look it up from the store
   const existingBlock = React.useMemo(() => {
     if (isEditingLibraryTemplate) {
       return blockTemplates.find((b) => b.id === blockId) || null;
     } else if (isEditingSessionInstance) {
-      // First check if item data was passed directly (for unsaved items)
       if (blockInstanceData && blockInstanceData.id === blockInstanceId) {
         return blockInstanceData;
       }
-      // Otherwise, look it up from the store
       const session = sessionTemplates.find((s) => s.id === sessionId);
       return (
         session?.items?.find((item) => item.id === blockInstanceId) || null
@@ -99,17 +88,14 @@ export default function BlockEditScreen({ navigation, route }) {
     return settings.customCategories || [];
   }, [settings.customCategories]);
 
-  // Get all available categories (built-in + custom, with custom shown even if not Pro)
   const allCategories = React.useMemo(() => {
     return [...builtInCategories, ...customCategories];
   }, [builtInCategories, customCategories]);
 
-  // Check if a category is custom (not built-in)
   const isCustomCategory = (cat) => {
     return !BUILT_IN_CATEGORIES.includes(cat);
   };
 
-  // Filter to only activities (for checking category usage)
   const activities = blockTemplates.filter(
     (template) => template.type === BlockType.ACTIVITY
   );
@@ -121,7 +107,6 @@ export default function BlockEditScreen({ navigation, route }) {
   const [notes, setNotes] = useState("");
   const [url, setUrl] = useState("");
 
-  // Initialize and update state when existingBlock changes
   useEffect(() => {
     if (existingBlock) {
       setLabel(existingBlock.label || "");
@@ -138,56 +123,31 @@ export default function BlockEditScreen({ navigation, route }) {
       setUrl(existingBlock.url || "");
     }
   }, [existingBlock]);
+
   const [showUpdateAllModal, setShowUpdateAllModal] = useState(false);
   const [pendingBlockData, setPendingBlockData] = useState(null);
   const styles = getStyles(colors);
 
-  // Update header title based on context
-  useEffect(() => {
-    let title = "Add Activity";
-    if (isEditingLibraryTemplate) {
-      title = "Edit Activity";
-    } else if (isEditingSessionInstance) {
-      const blockTypeLabel =
-        existingBlock?.type === BlockType.REST
-          ? "Rest"
-          : existingBlock?.type === BlockType.TRANSITION
-          ? "Transition"
-          : "Activity";
-      title = `Edit ${blockTypeLabel}`;
-    }
-
-    navigation.setOptions({
-      title,
-      headerRight: () => (
-        <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
-          <Text style={styles.saveButtonText}>Save</Text>
-        </TouchableOpacity>
-      ),
-    });
-  }, [
-    isEditingLibraryTemplate,
-    isEditingSessionInstance,
-    existingBlock?.type,
-    label,
-    category,
-    mode,
-    minutes,
-    seconds,
-    reps,
-    perRepSeconds,
-    notes,
-    styles,
-  ]);
+  // Build title for header
+  let headerTitle = "Add Activity";
+  if (isEditingLibraryTemplate) {
+    headerTitle = "Edit Activity";
+  } else if (isEditingSessionInstance) {
+    const blockTypeLabel =
+      existingBlock?.type === BlockType.REST
+        ? "Rest"
+        : existingBlock?.type === BlockType.TRANSITION
+        ? "Transition"
+        : "Activity";
+    headerTitle = `Edit ${blockTypeLabel}`;
+  }
 
   const handleSave = async () => {
-    // Check if editing a rest/transition block from session builder
     const isRestOrTransitionFromSession =
       isEditingSessionInstance &&
       (existingBlock?.type === BlockType.REST ||
         existingBlock?.type === BlockType.TRANSITION);
 
-    // Validation - skip label validation for rest/transition blocks
     if (!isRestOrTransitionFromSession && !label.trim()) {
       Alert.alert("Validation Error", "Please enter a name for this activity.");
       return;
@@ -221,20 +181,17 @@ export default function BlockEditScreen({ navigation, route }) {
     }
 
     const blockData = {
-      // For rest/transition blocks from session, preserve original label and mode
       label: isRestOrTransitionFromSession
         ? existingBlock?.label
         : label.trim(),
-      type: isEditingSessionInstance ? existingBlock?.type : BlockType.ACTIVITY, // Keep existing type for session instances
+      type: isEditingSessionInstance ? existingBlock?.type : BlockType.ACTIVITY,
       category:
         isEditingSessionInstance && existingBlock?.type !== BlockType.ACTIVITY
-          ? null // Rest and Transition don't have categories
+          ? null
           : category === "Uncategorized"
           ? null
           : category,
-      // For rest/transition blocks from session, always use DURATION mode
       mode: isRestOrTransitionFromSession ? BlockMode.DURATION : mode,
-      // For rest/transition blocks, only duration is allowed
       ...(isRestOrTransitionFromSession || mode === BlockMode.DURATION
         ? { durationSeconds }
         : { reps, perRepSeconds }),
@@ -244,18 +201,12 @@ export default function BlockEditScreen({ navigation, route }) {
 
     try {
       if (isEditingLibraryTemplate) {
-        // Editing a library template - normal flow
         await updateBlockTemplate(blockId, blockData);
         navigation.goBack();
       } else if (isEditingSessionInstance) {
-        // Editing a session instance
         const session = sessionTemplates.find((s) => s.id === sessionId);
 
-        // If session doesn't exist in store (unsaved session), handle via navigation params
         if (!session) {
-          // Session doesn't exist in store - this is an unsaved session
-          // Navigate back to SessionBuilder with params
-          // The draft system will handle restoring the items
           navigation.replace("SessionBuilder", {
             sessionId: sessionId,
             updatedBlockId: blockInstanceId,
@@ -265,36 +216,26 @@ export default function BlockEditScreen({ navigation, route }) {
           return;
         }
 
-        // Check if this activity appears multiple times in the session
-        // We need to check based on what we're matching:
-        // - For activities with templateId: match by templateId
-        // - For rest/transition or activities without templateId: match by original label
         const originalTemplateId = existingBlock?.templateId;
         const originalLabel = existingBlock?.label;
 
         const matchingInstances = session.items.filter((item) => {
-          if (item.id === blockInstanceId) return false; // Don't count the one we're editing
+          if (item.id === blockInstanceId) return false;
 
-          // For activities with templateId, match by templateId
           if (item.type === BlockType.ACTIVITY && originalTemplateId) {
             return item.templateId === originalTemplateId;
           }
 
-          // For rest/transition, or activities without templateId, match by original label
           return item.label === originalLabel;
         });
 
         if (matchingInstances.length > 0) {
-          // Multiple instances found - ask user what to do
           setPendingBlockData(blockData);
           setShowUpdateAllModal(true);
         } else {
-          // Only one instance - just update it
           await updateSessionInstance(blockData, false);
         }
       } else {
-        // Creating new library template
-        // Check activity limit for free users when creating new activity
         const activities = blockTemplates.filter(
           (b) => b.type === BlockType.ACTIVITY
         );
@@ -315,11 +256,7 @@ export default function BlockEditScreen({ navigation, route }) {
     try {
       let session = sessionTemplates.find((s) => s.id === sessionId);
 
-      // If session doesn't exist in store yet (unsaved session), pass data back via navigation
       if (!session) {
-        // Session doesn't exist in store - this means it's a new/unsaved session
-        // Navigate back to SessionBuilder with params
-        // The draft system will handle restoring the items
         navigation.navigate("SessionBuilder", {
           sessionId: sessionId,
           updatedBlockId: blockInstanceId,
@@ -331,24 +268,18 @@ export default function BlockEditScreen({ navigation, route }) {
 
       const updatedItems = [...session.items];
 
-      // Store original values for matching (use existingBlock which was loaded at start)
       const originalTemplateId = existingBlock?.templateId;
       const originalLabel = existingBlock?.label;
 
       if (updateAll) {
-        // Update all matching instances in the session
         updatedItems.forEach((item, idx) => {
-          // Check if this is a matching instance
           let isMatching = false;
 
           if (item.id === blockInstanceId) {
-            // The one being edited - always update
             isMatching = true;
           } else if (item.type === BlockType.ACTIVITY && originalTemplateId) {
-            // Activities with templateId - match by templateId
             isMatching = item.templateId === originalTemplateId;
           } else {
-            // Rest/transition or activities without templateId - match by original label
             isMatching = item.label === originalLabel;
           }
 
@@ -356,14 +287,12 @@ export default function BlockEditScreen({ navigation, route }) {
             updatedItems[idx] = {
               ...item,
               ...blockData,
-              // Preserve id and templateId
               id: item.id,
               templateId: item.templateId,
             };
           }
         });
       } else {
-        // Update only the one instance being edited
         const index = updatedItems.findIndex(
           (item) => item.id === blockInstanceId
         );
@@ -371,7 +300,6 @@ export default function BlockEditScreen({ navigation, route }) {
           updatedItems[index] = {
             ...updatedItems[index],
             ...blockData,
-            // Preserve id and templateId
             id: updatedItems[index].id,
             templateId: updatedItems[index].templateId,
           };
@@ -391,13 +319,12 @@ export default function BlockEditScreen({ navigation, route }) {
     if (pendingBlockData) {
       const session = sessionTemplates.find((s) => s.id === sessionId);
       if (!session) {
-        // Session doesn't exist in store - handle via navigation params
         navigation.navigate("SessionBuilder", {
           sessionId: sessionId,
           updatedBlockId: blockInstanceId,
           updatedBlockData: pendingBlockData,
           updateAll: true,
-          restoreFromRef: true, // Signal to restore items from ref
+          restoreFromRef: true,
         });
         setPendingBlockData(null);
         return;
@@ -412,13 +339,12 @@ export default function BlockEditScreen({ navigation, route }) {
     if (pendingBlockData) {
       const session = sessionTemplates.find((s) => s.id === sessionId);
       if (!session) {
-        // Session doesn't exist in store - handle via navigation params
         navigation.navigate("SessionBuilder", {
           sessionId: sessionId,
           updatedBlockId: blockInstanceId,
           updatedBlockData: pendingBlockData,
           updateAll: false,
-          restoreFromRef: true, // Signal to restore items from ref
+          restoreFromRef: true,
         });
         setPendingBlockData(null);
         return;
@@ -437,7 +363,6 @@ export default function BlockEditScreen({ navigation, route }) {
   };
 
   const handleCategorySelect = (cat) => {
-    // If it's a custom category and user is not Pro, show Pro modal
     if (isCustomCategory(cat) && !settings.isProUser) {
       setProModalVisible(true);
       return;
@@ -474,7 +399,6 @@ export default function BlockEditScreen({ navigation, route }) {
   };
 
   const handleEditCategory = (categoryName) => {
-    // Check if any activities use this category
     const activitiesUsingCategory = activities.filter(
       (activity) => (activity.category || "Uncategorized") === categoryName
     );
@@ -503,7 +427,6 @@ export default function BlockEditScreen({ navigation, route }) {
         ]
       );
     } else {
-      // No activities using it, proceed directly
       setEditingCategory(categoryName);
       setEditCategoryName(categoryName);
       setShowEditCategoryModal(true);
@@ -517,7 +440,6 @@ export default function BlockEditScreen({ navigation, route }) {
     }
     const trimmedName = editCategoryName.trim();
 
-    // Check if new name already exists
     if (trimmedName === editingCategory) {
       setShowEditCategoryModal(false);
       setEditingCategory(null);
@@ -533,13 +455,11 @@ export default function BlockEditScreen({ navigation, route }) {
       return;
     }
 
-    // Update category name in settings
     const updated = customCategories.map((cat) =>
       cat === editingCategory ? trimmedName : cat
     );
     updateSettings({ customCategories: updated });
 
-    // Update all activities using this category
     const activitiesUsingCategory = activities.filter(
       (activity) => (activity.category || "Uncategorized") === editingCategory
     );
@@ -547,7 +467,6 @@ export default function BlockEditScreen({ navigation, route }) {
       await updateBlockTemplate(activity.id, { category: trimmedName });
     }
 
-    // Update current category if it was the one being edited
     if (category === editingCategory) {
       setCategory(trimmedName);
     }
@@ -555,11 +474,9 @@ export default function BlockEditScreen({ navigation, route }) {
     setShowEditCategoryModal(false);
     setEditingCategory(null);
     setEditCategoryName("");
-    // Keep dropdown open after editing
   };
 
   const handleDeleteCategory = (categoryName) => {
-    // Check if any activities use this category
     const activitiesUsingCategory = activities.filter(
       (activity) => (activity.category || "Uncategorized") === categoryName
     );
@@ -581,18 +498,15 @@ export default function BlockEditScreen({ navigation, route }) {
             text: "Delete",
             style: "destructive",
             onPress: async () => {
-              // Remove category
               const updated = customCategories.filter(
                 (cat) => cat !== categoryName
               );
               updateSettings({ customCategories: updated });
 
-              // Update all activities to be uncategorized
               for (const activity of activitiesUsingCategory) {
                 await updateBlockTemplate(activity.id, { category: null });
               }
 
-              // If this category was selected, reset to Uncategorized
               if (category === categoryName) {
                 setCategory("Uncategorized");
               }
@@ -617,7 +531,6 @@ export default function BlockEditScreen({ navigation, route }) {
                 (cat) => cat !== categoryName
               );
               updateSettings({ customCategories: updated });
-              // If this category was selected, reset to Uncategorized
               if (category === categoryName) {
                 setCategory("Uncategorized");
               }
@@ -626,7 +539,6 @@ export default function BlockEditScreen({ navigation, route }) {
         ]
       );
     }
-    // Keep dropdown open after deleting
   };
 
   const renderModeButton = (blockMode, label) => (
@@ -645,289 +557,297 @@ export default function BlockEditScreen({ navigation, route }) {
     </TouchableOpacity>
   );
 
-  // Check if editing a rest/transition block from session builder
   const isRestOrTransitionFromSession =
     isEditingSessionInstance &&
     (existingBlock?.type === BlockType.REST ||
       existingBlock?.type === BlockType.TRANSITION);
 
   return (
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
-      <View style={styles.content}>
-        {/* Name/Label - Hidden for rest/transition blocks from session builder */}
-        {!isRestOrTransitionFromSession && (
-          <View style={styles.section}>
-            <Text style={styles.label}>Name *</Text>
-            <TextInput
-              style={styles.input}
-              value={label}
-              onChangeText={setLabel}
-              placeholder="e.g., Bicep curls"
-              placeholderTextColor={colors.textTertiary}
-            />
-          </View>
-        )}
+    <View style={styles.root}>
+      <AppHeader
+        title={headerTitle}
+        showBack={true}
+        onBack={() => navigation.goBack()}
+        rightContent={
+          <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
+            <Text style={styles.saveButtonText}>Save</Text>
+          </TouchableOpacity>
+        }
+      />
 
-        {/* Category Selection - Only for activities */}
-        {(!isEditingSessionInstance ||
-          existingBlock?.type === BlockType.ACTIVITY) && (
-          <View style={styles.section}>
-            <Text style={styles.label}>Category *</Text>
-            <View style={styles.categoryContainer}>
-              {/* Custom Categories Dropdown - pill button */}
-              {customCategories.length > 0 &&
-                (() => {
-                  const selectedCustomCategory = customCategories.find(
-                    (cat) => category === cat
-                  );
-                  const displayText = selectedCustomCategory || "Custom";
-                  return (
-                    <View style={styles.customCategoryPillContainer}>
-                      <TouchableOpacity
-                        style={[
-                          styles.categoryChip,
-                          selectedCustomCategory && styles.categoryChipActive,
-                        ]}
-                        onPress={() =>
-                          setShowCustomCategoryDropdown(
-                            !showCustomCategoryDropdown
-                          )
-                        }
-                      >
-                        <Text
+      <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+        <View style={styles.content}>
+          {!isRestOrTransitionFromSession && (
+            <View style={styles.section}>
+              <Text style={styles.label}>Name *</Text>
+              <TextInput
+                style={styles.input}
+                value={label}
+                onChangeText={setLabel}
+                placeholder="e.g., Bicep curls"
+                placeholderTextColor={colors.textTertiary}
+              />
+            </View>
+          )}
+
+          {(!isEditingSessionInstance ||
+            existingBlock?.type === BlockType.ACTIVITY) && (
+            <View style={styles.section}>
+              <Text style={styles.label}>Category *</Text>
+              <View style={styles.categoryContainer}>
+                {customCategories.length > 0 &&
+                  (() => {
+                    const selectedCustomCategory = customCategories.find(
+                      (cat) => category === cat
+                    );
+                    const displayText = selectedCustomCategory || "Custom";
+                    return (
+                      <View style={styles.customCategoryPillContainer}>
+                        <TouchableOpacity
                           style={[
-                            styles.categoryChipText,
-                            selectedCustomCategory &&
-                              styles.categoryChipTextActive,
+                            styles.categoryChip,
+                            selectedCustomCategory && styles.categoryChipActive,
                           ]}
+                          onPress={() =>
+                            setShowCustomCategoryDropdown(
+                              !showCustomCategoryDropdown
+                            )
+                          }
                         >
-                          {displayText} {showCustomCategoryDropdown ? "▼" : "▶"}
-                        </Text>
-                      </TouchableOpacity>
-                      {showCustomCategoryDropdown && (
-                        <View style={styles.customCategoryDropdownAbsolute}>
-                          {customCategories.map((cat, index) => (
-                            <View
-                              key={cat}
-                              style={[
-                                styles.customCategoryDropdownItem,
-                                index === customCategories.length - 1 &&
-                                  styles.customCategoryDropdownItemLast,
-                              ]}
-                            >
-                              <TouchableOpacity
+                          <Text
+                            style={[
+                              styles.categoryChipText,
+                              selectedCustomCategory &&
+                                styles.categoryChipTextActive,
+                            ]}
+                          >
+                            {displayText}{" "}
+                            {showCustomCategoryDropdown ? "▼" : "▶"}
+                          </Text>
+                        </TouchableOpacity>
+                        {showCustomCategoryDropdown && (
+                          <View style={styles.customCategoryDropdownAbsolute}>
+                            {customCategories.map((cat, index) => (
+                              <View
+                                key={cat}
                                 style={[
-                                  styles.customCategoryDropdownItemContent,
-                                  category === cat &&
-                                    styles.customCategoryDropdownItemContentActive,
+                                  styles.customCategoryDropdownItem,
+                                  index === customCategories.length - 1 &&
+                                    styles.customCategoryDropdownItemLast,
                                 ]}
-                                onPress={() => {
-                                  setCategory(cat);
-                                  setShowCustomCategoryDropdown(false);
-                                }}
                               >
-                                <Text
+                                <TouchableOpacity
                                   style={[
-                                    styles.customCategoryDropdownItemText,
+                                    styles.customCategoryDropdownItemContent,
                                     category === cat &&
-                                      styles.customCategoryDropdownItemTextActive,
+                                      styles.customCategoryDropdownItemContentActive,
                                   ]}
-                                >
-                                  {cat}
-                                </Text>
-                              </TouchableOpacity>
-                              <View style={styles.customCategoryActions}>
-                                <TouchableOpacity
-                                  style={styles.customCategoryActionButton}
-                                  onPress={() => handleEditCategory(cat)}
+                                  onPress={() => {
+                                    setCategory(cat);
+                                    setShowCustomCategoryDropdown(false);
+                                  }}
                                 >
                                   <Text
-                                    style={
-                                      styles.customCategoryActionButtonText
-                                    }
+                                    style={[
+                                      styles.customCategoryDropdownItemText,
+                                      category === cat &&
+                                        styles.customCategoryDropdownItemTextActive,
+                                    ]}
                                   >
-                                    ✏️
+                                    {cat}
                                   </Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity
-                                  style={styles.customCategoryActionButton}
-                                  onPress={() => handleDeleteCategory(cat)}
-                                >
-                                  <Text
-                                    style={
-                                      styles.customCategoryActionButtonText
-                                    }
+                                <View style={styles.customCategoryActions}>
+                                  <TouchableOpacity
+                                    style={styles.customCategoryActionButton}
+                                    onPress={() => handleEditCategory(cat)}
                                   >
-                                    🗑️
-                                  </Text>
-                                </TouchableOpacity>
+                                    <Text
+                                      style={
+                                        styles.customCategoryActionButtonText
+                                      }
+                                    >
+                                      ✏️
+                                    </Text>
+                                  </TouchableOpacity>
+                                  <TouchableOpacity
+                                    style={styles.customCategoryActionButton}
+                                    onPress={() => handleDeleteCategory(cat)}
+                                  >
+                                    <Text
+                                      style={
+                                        styles.customCategoryActionButtonText
+                                      }
+                                    >
+                                      🗑️
+                                    </Text>
+                                  </TouchableOpacity>
+                                </View>
                               </View>
-                            </View>
-                          ))}
-                        </View>
-                      )}
-                    </View>
-                  );
-                })()}
-              {/* Built-in categories as chips */}
-              {builtInCategories.map((cat) => {
-                const isLocked = false; // Built-in categories are never locked
-                return (
-                  <TouchableOpacity
-                    key={cat}
-                    style={[
-                      styles.categoryChip,
-                      category === cat && styles.categoryChipActive,
-                    ]}
-                    onPress={() => handleCategorySelect(cat)}
-                    disabled={isLocked}
-                  >
-                    <Text
+                            ))}
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })()}
+                {builtInCategories.map((cat) => {
+                  const isLocked = false;
+                  return (
+                    <TouchableOpacity
+                      key={cat}
                       style={[
-                        styles.categoryChipText,
-                        category === cat && styles.categoryChipTextActive,
+                        styles.categoryChip,
+                        category === cat && styles.categoryChipActive,
                       ]}
+                      onPress={() => handleCategorySelect(cat)}
+                      disabled={isLocked}
                     >
-                      {cat}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-            {settings.isProUser && (
-              <TouchableOpacity
-                style={styles.addCategoryButton}
-                onPress={handleAddCategory}
-              >
-                <Text style={styles.addCategoryButtonText}>+ Add Category</Text>
-              </TouchableOpacity>
-            )}
-            {!settings.isProUser && (
-              <TouchableOpacity
-                style={[
-                  styles.addCategoryButton,
-                  styles.addCategoryButtonDisabled,
-                ]}
-                disabled
-              >
-                <Text
-                  style={[
-                    styles.addCategoryButtonText,
-                    styles.addCategoryButtonTextDisabled,
-                  ]}
+                      <Text
+                        style={[
+                          styles.categoryChipText,
+                          category === cat && styles.categoryChipTextActive,
+                        ]}
+                      >
+                        {cat}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              {settings.isProUser && (
+                <TouchableOpacity
+                  style={styles.addCategoryButton}
+                  onPress={handleAddCategory}
                 >
-                  🔒 + Add Category (Pro)
+                  <Text style={styles.addCategoryButtonText}>
+                    + Add Category
+                  </Text>
+                </TouchableOpacity>
+              )}
+              {!settings.isProUser && (
+                <TouchableOpacity
+                  style={[
+                    styles.addCategoryButton,
+                    styles.addCategoryButtonDisabled,
+                  ]}
+                  disabled
+                >
+                  <Text
+                    style={[
+                      styles.addCategoryButtonText,
+                      styles.addCategoryButtonTextDisabled,
+                    ]}
+                  >
+                    🔒 + Add Category (Pro)
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          {!isRestOrTransitionFromSession && (
+            <View style={styles.section}>
+              <Text style={styles.label}>Mode *</Text>
+              <View style={styles.modeButtonContainer}>
+                {renderModeButton(BlockMode.DURATION, "Duration")}
+                {renderModeButton(BlockMode.REPS, "Reps")}
+              </View>
+            </View>
+          )}
+
+          {(mode === BlockMode.DURATION || isRestOrTransitionFromSession) && (
+            <View style={styles.section}>
+              <Text style={styles.label}>Duration *</Text>
+              <View style={styles.durationContainer}>
+                <View style={styles.durationInputGroup}>
+                  <TextInput
+                    style={styles.durationInput}
+                    value={minutes.toString()}
+                    onChangeText={(text) => setMinutes(parseInt(text) || 0)}
+                    placeholder="0"
+                    keyboardType="numeric"
+                  />
+                  <Text style={styles.durationLabel}>min</Text>
+                </View>
+                <View style={styles.durationInputGroup}>
+                  <TextInput
+                    style={styles.durationInput}
+                    value={seconds.toString()}
+                    onChangeText={(text) => {
+                      const val = parseInt(text) || 0;
+                      setSeconds(Math.min(59, Math.max(0, val)));
+                    }}
+                    placeholder="0"
+                    keyboardType="numeric"
+                  />
+                  <Text style={styles.durationLabel}>sec</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {mode === BlockMode.REPS && (
+            <>
+              <View style={styles.section}>
+                <Text style={styles.label}>Number of Reps *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={reps.toString()}
+                  onChangeText={(text) => setReps(parseInt(text) || 0)}
+                  placeholder="10"
+                  keyboardType="numeric"
+                />
+              </View>
+              <View style={styles.section}>
+                <Text style={styles.label}>Seconds per Rep *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={perRepSeconds.toString()}
+                  onChangeText={(text) =>
+                    setPerRepSeconds(parseFloat(text) || 0)
+                  }
+                  placeholder="5"
+                  keyboardType="decimal-pad"
+                />
+                <Text style={styles.hint}>
+                  Estimated time per rep (e.g., 5 seconds)
                 </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-
-        {/* Mode Selection - Hidden for rest/transition blocks from session builder */}
-        {!isRestOrTransitionFromSession && (
-          <View style={styles.section}>
-            <Text style={styles.label}>Mode *</Text>
-            <View style={styles.modeButtonContainer}>
-              {renderModeButton(BlockMode.DURATION, "Duration")}
-              {renderModeButton(BlockMode.REPS, "Reps")}
-            </View>
-          </View>
-        )}
-
-        {/* Duration Input - Always shown for rest/transition blocks, conditional for others */}
-        {(mode === BlockMode.DURATION || isRestOrTransitionFromSession) && (
-          <View style={styles.section}>
-            <Text style={styles.label}>Duration *</Text>
-            <View style={styles.durationContainer}>
-              <View style={styles.durationInputGroup}>
-                <TextInput
-                  style={styles.durationInput}
-                  value={minutes.toString()}
-                  onChangeText={(text) => setMinutes(parseInt(text) || 0)}
-                  placeholder="0"
-                  keyboardType="numeric"
-                />
-                <Text style={styles.durationLabel}>min</Text>
               </View>
-              <View style={styles.durationInputGroup}>
-                <TextInput
-                  style={styles.durationInput}
-                  value={seconds.toString()}
-                  onChangeText={(text) => {
-                    const val = parseInt(text) || 0;
-                    setSeconds(Math.min(59, Math.max(0, val)));
-                  }}
-                  placeholder="0"
-                  keyboardType="numeric"
-                />
-                <Text style={styles.durationLabel}>sec</Text>
-              </View>
-            </View>
-          </View>
-        )}
+            </>
+          )}
 
-        {/* Reps Input */}
-        {mode === BlockMode.REPS && (
-          <>
-            <View style={styles.section}>
-              <Text style={styles.label}>Number of Reps *</Text>
-              <TextInput
-                style={styles.input}
-                value={reps.toString()}
-                onChangeText={(text) => setReps(parseInt(text) || 0)}
-                placeholder="10"
-                keyboardType="numeric"
-              />
-            </View>
-            <View style={styles.section}>
-              <Text style={styles.label}>Seconds per Rep *</Text>
-              <TextInput
-                style={styles.input}
-                value={perRepSeconds.toString()}
-                onChangeText={(text) => setPerRepSeconds(parseFloat(text) || 0)}
-                placeholder="5"
-                keyboardType="decimal-pad"
-              />
-              <Text style={styles.hint}>
-                Estimated time per rep (e.g., 5 seconds)
-              </Text>
-            </View>
-          </>
-        )}
-
-        {/* Notes (Optional) */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Notes (Optional)</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={notes}
-            onChangeText={setNotes}
-            placeholder="Additional notes or instructions..."
-            placeholderTextColor={colors.textTertiary}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-          />
-        </View>
-
-        {/* URL (Optional) - Only for activities */}
-        {(!isEditingSessionInstance ||
-          existingBlock?.type === BlockType.ACTIVITY) && (
           <View style={styles.section}>
-            <Text style={styles.label}>URL (Optional)</Text>
+            <Text style={styles.label}>Notes (Optional)</Text>
             <TextInput
-              style={styles.input}
-              value={url}
-              onChangeText={setUrl}
-              placeholder="https://example.com"
+              style={[styles.input, styles.textArea]}
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="Additional notes or instructions..."
               placeholderTextColor={colors.textTertiary}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
             />
           </View>
-        )}
-      </View>
+
+          {(!isEditingSessionInstance ||
+            existingBlock?.type === BlockType.ACTIVITY) && (
+            <View style={styles.section}>
+              <Text style={styles.label}>URL (Optional)</Text>
+              <TextInput
+                style={styles.input}
+                value={url}
+                onChangeText={setUrl}
+                placeholder="https://example.com"
+                placeholderTextColor={colors.textTertiary}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+            </View>
+          )}
+        </View>
+      </ScrollView>
 
       {/* Add Category Modal */}
       <Modal
@@ -1052,7 +972,7 @@ export default function BlockEditScreen({ navigation, route }) {
               }
 
               const matchingCount = session.items.filter((item) => {
-                if (item.id === blockInstanceId) return false; // Don't count the one being edited
+                if (item.id === blockInstanceId) return false;
                 if (
                   item.type === BlockType.ACTIVITY &&
                   existingBlock?.templateId
@@ -1062,7 +982,7 @@ export default function BlockEditScreen({ navigation, route }) {
                 return item.label === existingBlock?.label;
               }).length;
 
-              const totalInstances = matchingCount + 1; // +1 for the one being edited
+              const totalInstances = matchingCount + 1;
               const blockTypeLabel =
                 existingBlock?.type === BlockType.ACTIVITY
                   ? "activity"
@@ -1115,12 +1035,16 @@ export default function BlockEditScreen({ navigation, route }) {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </View>
   );
 }
 
 const getStyles = (colors) =>
   StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
     container: {
       flex: 1,
       backgroundColor: colors.background,
@@ -1181,12 +1105,6 @@ const getStyles = (colors) =>
     categoryChipTextActive: {
       color: colors.textLight,
       fontWeight: "600",
-    },
-    categoryChipLocked: {
-      opacity: 0.7,
-    },
-    categoryChipTextLocked: {
-      color: colors.textTertiary,
     },
     addCategoryButton: {
       paddingVertical: 10,
@@ -1333,7 +1251,7 @@ const getStyles = (colors) =>
       paddingVertical: 8,
     },
     saveButtonText: {
-      color: colors.textLight,
+      color: colors.text,
       fontSize: 16,
       fontWeight: "600",
     },

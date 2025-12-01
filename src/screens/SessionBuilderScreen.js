@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useFocusEffect } from "@react-navigation/native";
+import AppHeader from "../components/AppHeader";
 import {
   View,
   Text,
@@ -470,54 +471,54 @@ export default function SessionBuilderScreen({ navigation, route }) {
     ])
   );
 
-  useEffect(() => {
-    const headerStyles = {
-      headerRightContainer: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-      },
-      discardButton: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-      },
-      discardButtonText: {
-        color: colors.error,
-        fontSize: 16,
-        fontWeight: "600",
-      },
-      saveButton: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-      },
-      saveButtonText: {
-        color: colors.textLight,
-        fontSize: 16,
-        fontWeight: "600",
-      },
-    };
+  // useEffect(() => {
+  //   const headerStyles = {
+  //     headerRightContainer: {
+  //       flexDirection: "row",
+  //       alignItems: "center",
+  //       gap: 12,
+  //     },
+  //     discardButton: {
+  //       paddingHorizontal: 16,
+  //       paddingVertical: 8,
+  //     },
+  //     discardButtonText: {
+  //       color: colors.error,
+  //       fontSize: 16,
+  //       fontWeight: "600",
+  //     },
+  //     saveButton: {
+  //       paddingHorizontal: 16,
+  //       paddingVertical: 8,
+  //     },
+  //     saveButtonText: {
+  //       color: colors.textLight,
+  //       fontSize: 16,
+  //       fontWeight: "600",
+  //     },
+  //   };
 
-    navigation.setOptions({
-      headerRight: () =>
-        // Only show Save and Discard buttons for new sessions (not when editing existing sessions)
-        isEditing ? null : (
-          <View style={headerStyles.headerRightContainer}>
-            <TouchableOpacity
-              onPress={() => setDiscardModalVisible(true)}
-              style={headerStyles.discardButton}
-            >
-              <Text style={headerStyles.discardButtonText}>Discard</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleSave}
-              style={headerStyles.saveButton}
-            >
-              <Text style={headerStyles.saveButtonText}>Save</Text>
-            </TouchableOpacity>
-          </View>
-        ),
-    });
-  }, [isEditing, sessionName, items, scheduledDaysOfWeek, navigation, colors]);
+  //   navigation.setOptions({
+  //     headerRight: () =>
+  //       // Only show Save and Discard buttons for new sessions (not when editing existing sessions)
+  //       isEditing ? null : (
+  //         <View style={headerStyles.headerRightContainer}>
+  //           <TouchableOpacity
+  //             onPress={() => setDiscardModalVisible(true)}
+  //             style={headerStyles.discardButton}
+  //           >
+  //             <Text style={headerStyles.discardButtonText}>Discard</Text>
+  //           </TouchableOpacity>
+  //           <TouchableOpacity
+  //             onPress={handleSave}
+  //             style={headerStyles.saveButton}
+  //           >
+  //             <Text style={headerStyles.saveButtonText}>Save</Text>
+  //           </TouchableOpacity>
+  //         </View>
+  //       ),
+  //   });
+  // }, [isEditing, sessionName, items, scheduledDaysOfWeek, navigation, colors]);
 
   const handleSave = async () => {
     if (!sessionName.trim()) {
@@ -794,9 +795,44 @@ export default function SessionBuilderScreen({ navigation, route }) {
   const totalDuration = getSessionTotalDuration({ items });
   const styles = getStyles(colors);
 
+  // header-right content for new sessions
+  const renderHeaderRight = () => {
+    if (isEditing) return null;
+
+    return (
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <TouchableOpacity onPress={() => setDiscardModalVisible(true)}>
+          <Text
+            style={{ color: colors.error, fontSize: 16, fontWeight: "600" }}
+          >
+            Discard
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleSave}>
+          <Text
+            style={{
+              color: colors.primary,
+              fontSize: 16,
+              fontWeight: "600",
+            }}
+          >
+            Save
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
-      {/* Toast Notification - positioned at top near session name */}
+      <AppHeader
+        title={isEditing ? "Edit Session" : "New Session"}
+        showBack={true}
+        onBack={() => navigation.goBack()}
+        rightContent={renderHeaderRight()}
+      />
+
+      {/* Toast Notification - positioned under header */}
       <Toast
         message="Changes Saved"
         visible={toastVisible}
