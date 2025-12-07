@@ -144,7 +144,7 @@ function SettingsStack() {
       <Stack.Screen
         name="GoPro"
         component={GoProScreen}
-        options={{ title: "Timer Pro" }}
+        options={{ title: "Timer Pro", headerShown: false }}
       />
     </Stack.Navigator>
   );

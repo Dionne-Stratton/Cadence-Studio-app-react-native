@@ -762,14 +762,14 @@ These do not need implementation now — this section simply future-proofs Pro.
 
 Subscription Options
 
-$0.99 / month
+$2.99 / month
 
-$9.99 / year
+$29.99 / year
 (approx. 17% discount vs monthly; recommended default)
 
 Lifetime Unlock
 
-$14.99 one-time purchase
+$54.99 one-time purchase
 
 Includes all current and future Pro features permanently
 
