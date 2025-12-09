@@ -730,141 +730,134 @@ export default function SessionBuilderScreen({ navigation, route }) {
         rightContent={renderHeaderRight()}
       />
 
-      {/* Toast Notification - positioned under header */}
       <Toast
         message="Changes Saved"
         visible={toastVisible}
         onHide={() => setToastVisible(false)}
       />
 
-      <ScrollView
-        style={styles.content}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{
-          paddingBottom: 120 + Math.max(insets.bottom, 0),
+      <DraggableFlatList
+        data={items}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        onDragEnd={({ data }) => {
+          setItems(data);
+          if (!isEditing) saveDraftNow(data);
         }}
-      >
-        {/* Session Name */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Session Name *</Text>
-          <TextInput
-            style={styles.input}
-            value={sessionName}
-            onChangeText={setSessionName}
-            placeholder="e.g., Leg Day A"
-            placeholderTextColor={colors.textTertiary}
-          />
-        </View>
-
-        {/* Scheduled Days */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Schedule (Optional)</Text>
-          <Text style={styles.description}>
-            Select days of the week when this session should appear in Quick
-            Start
-          </Text>
-          <View style={styles.daysContainer}>
-            {weekdays.map((day) => {
-              const isSelected = scheduledDaysOfWeek.includes(day.value);
-              return (
-                <TouchableOpacity
-                  key={day.value}
-                  style={[
-                    styles.dayButton,
-                    isSelected && styles.dayButtonActive,
-                  ]}
-                  onPress={() => toggleDay(day.value)}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={[
-                      styles.dayButtonText,
-                      isSelected && styles.dayButtonTextActive,
-                    ]}
-                  >
-                    {day.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-          {scheduledDaysOfWeek.length > 0 && (
-            <Text style={styles.scheduledHint}>
-              Scheduled for{" "}
-              {scheduledDaysOfWeek
-                .map((d) => weekdays.find((w) => w.value === d)?.label)
-                .join(", ")}
-            </Text>
-          )}
-        </View>
-
-        {/* Summary */}
-        <View style={styles.summaryContainer}>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Total Duration</Text>
-            <Text style={styles.summaryValue}>{formatTime(totalDuration)}</Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Number of Blocks</Text>
-            <Text style={styles.summaryValue}>{items.length}</Text>
-          </View>
-        </View>
-
-        {/* Blocks List */}
-        <View style={styles.blocksSection}>
-          <Text style={styles.sectionTitle}>Blocks</Text>
-          {items.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No blocks added yet</Text>
-              <Text style={styles.emptySubtext}>
-                Tap "Add Block" to get started
-              </Text>
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={
+          <View>
+            {/* Session Name */}
+            <View style={styles.section}>
+              <Text style={styles.label}>Session Name *</Text>
+              <TextInput
+                style={styles.input}
+                value={sessionName}
+                onChangeText={setSessionName}
+                placeholder="e.g., Leg Day A"
+                placeholderTextColor={colors.textTertiary}
+              />
             </View>
-          ) : (
-            <DraggableFlatList
-              data={items}
-              keyExtractor={(item) => item.id}
-              renderItem={renderItem}
-              containerStyle={{ paddingTop: 4 }}
-              onDragEnd={({ data }) => {
-                setItems(data);
-                // Only save draft explicitly for new sessions
-                if (!isEditing) {
-                  saveDraftNow(data);
-                }
-                // For existing sessions, autosave effect will pick up
-              }}
-            />
-          )}
-        </View>
-      </ScrollView>
 
-      {/* Add Block Buttons */}
+            {/* Schedule */}
+            <View style={styles.section}>
+              <Text style={styles.label}>Schedule (Optional)</Text>
+              <Text style={styles.description}>
+                Select days for Quick Start
+              </Text>
+
+              <View style={styles.daysContainer}>
+                {weekdays.map((day) => {
+                  const isSelected = scheduledDaysOfWeek.includes(day.value);
+                  return (
+                    <TouchableOpacity
+                      key={day.value}
+                      style={[
+                        styles.dayButton,
+                        isSelected && styles.dayButtonActive,
+                      ]}
+                      onPress={() => toggleDay(day.value)}
+                    >
+                      <Text
+                        style={[
+                          styles.dayButtonText,
+                          isSelected && styles.dayButtonTextActive,
+                        ]}
+                      >
+                        {day.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {scheduledDaysOfWeek.length > 0 && (
+                <Text style={styles.scheduledHint}>
+                  Scheduled for{" "}
+                  {scheduledDaysOfWeek
+                    .map((d) => weekdays.find((w) => w.value === d)?.label)
+                    .join(", ")}
+                </Text>
+              )}
+            </View>
+
+            {/* Summary */}
+            <View style={styles.summaryContainer}>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>Total Duration</Text>
+                <Text style={styles.summaryValue}>
+                  {formatTime(totalDuration)}
+                </Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>Number of Blocks</Text>
+                <Text style={styles.summaryValue}>{items.length}</Text>
+              </View>
+            </View>
+
+            {/* Blocks Header */}
+            <View style={styles.blocksSection}>
+              <Text style={styles.sectionTitle}>Blocks</Text>
+              {items.length === 0 && (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>No blocks added yet</Text>
+                  <Text style={styles.emptySubtext}>
+                    Tap "Add Activity" to get started
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        }
+        contentContainerStyle={{
+          paddingBottom: 140 + insets.bottom,
+          paddingHorizontal: 16,
+        }}
+      />
+
+      {/* Floating Add Buttons */}
       <View style={styles.addButtonsContainer}>
         <TouchableOpacity
           style={[styles.addButton, styles.addActivityButton]}
           onPress={() => setShowAddModal(true)}
-          activeOpacity={0.8}
         >
           <Text style={styles.addButtonText}>+ Add Activity</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.addButton, styles.addRestButton]}
           onPress={() => setShowRestModal(true)}
-          activeOpacity={0.8}
         >
           <Text style={styles.addButtonText}>+ Add Rest</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.addButton, styles.addTransitionButton]}
           onPress={() => setShowTransitionModal(true)}
-          activeOpacity={0.8}
         >
           <Text style={styles.addButtonText}>+ Add Transition</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Add Activity Modal (Library) */}
+      {/* Modals */}
       {showAddModal && (
         <AddBlockModal
           visible={showAddModal}
@@ -874,7 +867,6 @@ export default function SessionBuilderScreen({ navigation, route }) {
         />
       )}
 
-      {/* Add Rest Modal */}
       {showRestModal && (
         <AddRestTransitionModal
           visible={showRestModal}
@@ -884,7 +876,6 @@ export default function SessionBuilderScreen({ navigation, route }) {
         />
       )}
 
-      {/* Add Transition Modal */}
       {showTransitionModal && (
         <AddRestTransitionModal
           visible={showTransitionModal}
@@ -894,52 +885,12 @@ export default function SessionBuilderScreen({ navigation, route }) {
         />
       )}
 
-      {/* Pro Upgrade Modal */}
       <ProUpgradeModal
         visible={proModalVisible}
         onClose={() => setProModalVisible(false)}
         limitType="sessions"
         onUpgrade={handleProModalUpgrade}
       />
-
-      {/* Discard Confirmation Modal */}
-      <Modal
-        visible={discardModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setDiscardModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Discard Session?</Text>
-            <Text style={styles.modalMessage}>
-              This will clear out this form and your current draft will not be
-              saved. Are you sure?
-            </Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonCancel]}
-                onPress={() => setDiscardModalVisible(false)}
-              >
-                <Text style={styles.modalButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonConfirm]}
-                onPress={handleConfirmDiscard}
-              >
-                <Text
-                  style={[
-                    styles.modalButtonText,
-                    styles.modalButtonConfirmText,
-                  ]}
-                >
-                  Discard
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
