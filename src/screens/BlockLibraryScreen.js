@@ -15,6 +15,7 @@ import useStore from '../store';
 import { BlockType, getBlockTimingSummary, getBlockTypeColor, BUILT_IN_CATEGORIES } from '../types';
 import { useTheme } from '../theme';
 import ProUpgradeModal from '../components/ProUpgradeModal';
+import { useProEntitlement } from '../hooks/useProEntitlement';
 
 export default function BlockLibraryScreen({ navigation }) {
   const colors = useTheme();
@@ -22,6 +23,10 @@ export default function BlockLibraryScreen({ navigation }) {
   const blockTemplates = useStore((state) => state.blockTemplates);
   const settings = useStore((state) => state.settings);
   const deleteBlockTemplate = useStore((state) => state.deleteBlockTemplate);
+  
+  // Check Pro entitlement - single source of truth for Pro feature access
+  const { isPro } = useProEntitlement();
+  
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null); // null = all categories
@@ -262,9 +267,9 @@ export default function BlockLibraryScreen({ navigation }) {
       <TouchableOpacity
         style={styles.addButton}
         onPress={() => {
-          // Check activity limit for free users
+          // Check activity limit for free users - check entitlement
           const activities = blockTemplates.filter(b => b.type === BlockType.ACTIVITY);
-          if (!settings.isProUser && activities.length >= 20) {
+          if (!isPro && activities.length >= 20) {
             setProModalVisible(true);
             return;
           }

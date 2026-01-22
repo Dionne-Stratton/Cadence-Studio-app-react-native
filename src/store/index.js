@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { storageService } from "../services/storage";
 import { generateId } from "../utils/id";
 import { BlockType, BlockMode, getSessionTotalDuration } from "../types";
+import { checkProEntitlement } from "../services/subscriptionService";
 
 /**
  * Zustand store for global app state
@@ -192,7 +193,9 @@ const useStore = create((set, get) => ({
 
     // Free users: 30 days retention (override their setting)
     // Pro users: use their selected retention setting
-    const effectiveRetention = settings.isProUser
+    // Check Pro entitlement - single source of truth for Pro feature access
+    const isPro = await checkProEntitlement();
+    const effectiveRetention = isPro
       ? settings.historyRetention
       : "30days";
 

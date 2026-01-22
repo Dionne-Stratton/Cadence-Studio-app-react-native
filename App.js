@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import AppNavigator from "./src/navigation/AppNavigator";
 import useStore from "./src/store";
 import { getThemeColors } from "./src/theme";
+import { initializeRevenueCat } from "./src/services/subscriptionService";
 
 export default function App() {
   const initialize = useStore((state) => state.initialize);
@@ -15,6 +16,12 @@ export default function App() {
   useEffect(() => {
     // Initialize store - load data from storage
     initialize();
+    
+    // Initialize RevenueCat for subscription management
+    initializeRevenueCat().catch((error) => {
+      console.error('Failed to initialize RevenueCat:', error);
+      // Don't block app startup if RevenueCat fails to initialize
+    });
   }, [initialize]);
 
   // Determine status bar style based on theme

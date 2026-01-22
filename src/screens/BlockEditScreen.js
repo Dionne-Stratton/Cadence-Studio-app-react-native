@@ -15,6 +15,7 @@ import { BlockType, BlockMode, BUILT_IN_CATEGORIES } from "../types";
 import { useTheme } from "../theme";
 import ProUpgradeModal from "../components/ProUpgradeModal";
 import AppHeader from "../components/AppHeader";
+import { useProEntitlement } from "../hooks/useProEntitlement";
 
 export default function BlockEditScreen({ navigation, route }) {
   const { blockId, blockInstanceId, sessionId, blockIndex, blockInstanceData } =
@@ -29,6 +30,9 @@ export default function BlockEditScreen({ navigation, route }) {
     (state) => state.updateSessionTemplate
   );
   const updateSettings = useStore((state) => state.updateSettings);
+  
+  // Check Pro entitlement - single source of truth for Pro feature access
+  const { isPro } = useProEntitlement();
 
   // Determine if we're editing a library template or a session instance
   const isEditingLibraryTemplate = blockId !== null && blockId !== undefined;
@@ -239,7 +243,8 @@ export default function BlockEditScreen({ navigation, route }) {
         const activities = blockTemplates.filter(
           (b) => b.type === BlockType.ACTIVITY
         );
-        if (!settings.isProUser && activities.length >= 20) {
+        // Check activity limit for free users - check entitlement
+        if (!isPro && activities.length >= 20) {
           setProModalVisible(true);
           return;
         }
@@ -355,7 +360,8 @@ export default function BlockEditScreen({ navigation, route }) {
   };
 
   const handleAddCategory = () => {
-    if (!settings.isProUser) {
+    // Custom categories are Pro-only - check entitlement
+    if (!isPro) {
       setProModalVisible(true);
       return;
     }
@@ -363,7 +369,8 @@ export default function BlockEditScreen({ navigation, route }) {
   };
 
   const handleCategorySelect = (cat) => {
-    if (isCustomCategory(cat) && !settings.isProUser) {
+    // Custom categories are Pro-only - check entitlement
+    if (isCustomCategory(cat) && !isPro) {
       setProModalVisible(true);
       return;
     }
@@ -714,7 +721,7 @@ export default function BlockEditScreen({ navigation, route }) {
                   );
                 })}
               </View>
-              {settings.isProUser && (
+              {isPro && (
                 <TouchableOpacity
                   style={styles.addCategoryButton}
                   onPress={handleAddCategory}
@@ -724,7 +731,7 @@ export default function BlockEditScreen({ navigation, route }) {
                   </Text>
                 </TouchableOpacity>
               )}
-              {!settings.isProUser && (
+              {!isPro && (
                 <TouchableOpacity
                   style={[
                     styles.addCategoryButton,

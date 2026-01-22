@@ -13,6 +13,8 @@ import { useAudioPlayer } from "expo-audio";
 import useStore from "../store";
 import { sessionSharingService } from "../services/sessionSharing";
 import { useTheme } from "../theme";
+import { useProEntitlement } from "../hooks/useProEntitlement";
+import { restorePurchases } from "../services/subscriptionService";
 
 // Warning time limits
 const MIN_WARNING_SECONDS = 5;
@@ -39,6 +41,9 @@ export default function SettingsScreen({ navigation }) {
   );
   const blockTemplates = useStore((state) => state.blockTemplates);
   const sessionTemplates = useStore((state) => state.sessionTemplates);
+  
+  // Check Pro entitlement - single source of truth for Pro feature access
+  const { isPro } = useProEntitlement();
 
   // ---- Audio cue pack & preview players ----
   // Fallback to "music" when the setting is missing so music behaves like the default
@@ -124,8 +129,8 @@ export default function SettingsScreen({ navigation }) {
   };
 
   const handleHistoryRetentionChange = async (retention) => {
-    // Only allow changes for Pro users
-    if (!settings.isProUser) {
+    // Only allow changes for Pro users - check entitlement
+    if (!isPro) {
       return;
     }
     updateSettings({ historyRetention: retention });
@@ -135,24 +140,40 @@ export default function SettingsScreen({ navigation }) {
 
   // Ensure history retention is set to 30 days on mount for non-Pro users
   useEffect(() => {
-    if (!settings.isProUser && settings.historyRetention !== "30days") {
+    if (!isPro && settings.historyRetention !== "30days") {
       updateSettings({ historyRetention: "30days" });
       useStore.getState().enforceHistoryRetention();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isPro]);
 
   const handleThemeModeChange = (mode) => {
     updateSettings({ themeMode: mode });
   };
 
-  const handleRestorePurchases = () => {
-    // Dummy handler - will be replaced with real restore logic
-    Alert.alert(
-      "Restore Purchases",
-      "This would restore your previous purchases. Restore functionality will be implemented later.",
-      [{ text: "OK" }]
-    );
+  const handleRestorePurchases = async () => {
+    try {
+      const result = await restorePurchases();
+      
+      if (result.success) {
+        Alert.alert(
+          "Success",
+          "Your purchases have been restored!",
+          [{ text: "OK" }]
+        );
+      } else {
+        Alert.alert(
+          "No Purchases Found",
+          "We couldn't find any previous purchases to restore."
+        );
+      }
+    } catch (error) {
+      console.error('Restore error:', error);
+      Alert.alert(
+        "Restore Failed",
+        "An error occurred while restoring purchases. Please try again."
+      );
+    }
   };
 
   const handleDeleteAllHistory = () => {
@@ -509,16 +530,10 @@ export default function SettingsScreen({ navigation }) {
               <Text style={styles.goProButtonText}>Go Pro</Text>
             </TouchableOpacity>
             <Text style={styles.settingDescription}>
-              {settings.isProUser
+              {isPro
                 ? "Pro tier: Unlimited sessions, activities, custom categories, and full history retention."
                 : "Free tier: Up to 5 sessions, 20 activities, built-in categories only, and 30 days history."}
             </Text>
-            {renderToggleSetting(
-              "Enable Pro Features (Developer)",
-              "Toggle Pro features for testing",
-              settings.isProUser || false,
-              () => handleToggle("isProUser")
-            )}
             <TouchableOpacity
               style={styles.restoreButton}
               onPress={handleRestorePurchases}
@@ -549,7 +564,7 @@ export default function SettingsScreen({ navigation }) {
           <View>
             {renderOptionSetting(
               "Keep History For",
-              settings.isProUser
+              isPro
                 ? "Automatically delete history older than selected period"
                 : "Free users are limited to 30 days. Upgrade to Pro to customize history retention.",
               [
@@ -559,11 +574,11 @@ export default function SettingsScreen({ navigation }) {
                 { label: "12 months", value: "12months" },
                 { label: "Unlimited", value: "unlimited" },
               ],
-              settings.isProUser
+              isPro
                 ? settings.historyRetention || "unlimited"
                 : "30days",
               handleHistoryRetentionChange,
-              !settings.isProUser // disabled for non-Pro users
+              !isPro // disabled for non-Pro users - check entitlement
             )}
           </View>
         )}

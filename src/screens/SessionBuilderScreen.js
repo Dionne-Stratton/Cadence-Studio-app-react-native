@@ -31,6 +31,7 @@ import ProUpgradeModal from "../components/ProUpgradeModal";
 import Toast from "../components/Toast";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useProEntitlement } from "../hooks/useProEntitlement";
 
 export default function SessionBuilderScreen({ navigation, route }) {
   const { sessionId: routeSessionId } = route.params || {};
@@ -48,6 +49,9 @@ export default function SessionBuilderScreen({ navigation, route }) {
   const deleteSessionDraft = useStore((state) => state.deleteSessionDraft);
   const [proModalVisible, setProModalVisible] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
+  
+  // Check Pro entitlement - single source of truth for Pro feature access
+  const { isPro } = useProEntitlement();
   const [discardModalVisible, setDiscardModalVisible] = useState(false);
   const saveTimeoutRef = useRef(null);
   const hasUnsavedChangesRef = useRef(false);
@@ -494,8 +498,8 @@ export default function SessionBuilderScreen({ navigation, route }) {
           scheduledDaysOfWeek: scheduledDaysOfWeek,
         });
       } else {
-        // Check session limit for free users when creating new session
-        if (!settings.isProUser && sessionTemplates.length >= 5) {
+        // Check session limit for free users when creating new session - check entitlement
+        if (!isPro && sessionTemplates.length >= 5) {
           setProModalVisible(true);
           return;
         }

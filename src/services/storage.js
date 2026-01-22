@@ -20,7 +20,7 @@ const DEFAULT_SETTINGS = {
   historyRetention: 'unlimited',
   themeMode: 'system', // 'light', 'dark', or 'system'
   customCategories: [], // Pro feature - custom category names
-  isProUser: false, // Toggle for testing Pro features
+  isProUser: false, // DEPRECATED: No longer used - Pro status now checked via subscription entitlement
   defaultSaveToLibrary: true, // Default value for "Save to Library" toggle in Add Custom
 };
 

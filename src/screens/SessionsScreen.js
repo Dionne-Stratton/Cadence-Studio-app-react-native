@@ -19,6 +19,7 @@ import { getSessionTotalDuration, formatTime } from "../types";
 import { sessionSharingService } from "../services/sessionSharing";
 import { useTheme } from "../theme";
 import ProUpgradeModal from "../components/ProUpgradeModal";
+import { useProEntitlement } from "../hooks/useProEntitlement";
 
 export default function SessionsScreen({ navigation }) {
   const colors = useTheme();
@@ -39,6 +40,9 @@ export default function SessionsScreen({ navigation }) {
   const [proModalVisible, setProModalVisible] = useState(false);
   const [proModalLimitType, setProModalLimitType] = useState(null);
   const settings = useStore((state) => state.settings);
+  
+  // Check Pro entitlement - single source of truth for Pro feature access
+  const { isPro } = useProEntitlement();
 
   useEffect(() => {
     // Load data on mount
@@ -53,8 +57,8 @@ export default function SessionsScreen({ navigation }) {
   };
 
   const handleCreateSession = () => {
-    // Check session limit for free users
-    if (!settings.isProUser && sessionTemplates.length >= 5) {
+    // Check session limit for free users - check entitlement
+    if (!isPro && sessionTemplates.length >= 5) {
       setProModalLimitType("sessions");
       setProModalVisible(true);
       return;
@@ -75,8 +79,8 @@ export default function SessionsScreen({ navigation }) {
   };
 
   const handleDuplicateSession = async (sessionId) => {
-    // Check session limit for free users
-    if (!settings.isProUser && sessionTemplates.length >= 5) {
+    // Check session limit for free users - check entitlement
+    if (!isPro && sessionTemplates.length >= 5) {
       setProModalLimitType("sessions");
       setProModalVisible(true);
       return;
@@ -104,8 +108,8 @@ export default function SessionsScreen({ navigation }) {
   };
 
   const handleShareSession = async (sessionId) => {
-    // Check if user is Pro (export is Pro-only)
-    if (!settings.isProUser) {
+    // Check if user is Pro (export is Pro-only) - check entitlement
+    if (!isPro) {
       setProModalLimitType("export");
       setProModalVisible(true);
       return;
@@ -222,7 +226,7 @@ export default function SessionsScreen({ navigation }) {
   return (
     <View style={styles.container}>
       {/* Free Plan Banner */}
-      {!settings.isProUser && (
+      {!isPro && (
         <View style={styles.freeBanner}>
           <Text style={styles.freeBannerText}>
             Free plan: Up to 5 sessions.
@@ -234,7 +238,7 @@ export default function SessionsScreen({ navigation }) {
       <View
         style={[
           styles.searchContainer,
-          settings.isProUser && styles.searchContainerNoBanner,
+          isPro && styles.searchContainerNoBanner,
         ]}
       >
         <TextInput

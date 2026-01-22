@@ -22,6 +22,7 @@ import {
 import { generateId } from "../utils/id";
 import { useTheme } from "../theme";
 import ProUpgradeModal from "./ProUpgradeModal";
+import { useProEntitlement } from "../hooks/useProEntitlement";
 
 export default function AddBlockModal({
   visible,
@@ -34,6 +35,9 @@ export default function AddBlockModal({
   const settings = useStore((state) => state.settings);
   const addBlockTemplate = useStore((state) => state.addBlockTemplate);
   const updateSettings = useStore((state) => state.updateSettings);
+  
+  // Check Pro entitlement - single source of truth for Pro feature access
+  const { isPro } = useProEntitlement();
   const [tab, setTab] = useState("library"); // 'library' or 'custom'
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState(null);
@@ -83,8 +87,8 @@ export default function AddBlockModal({
   };
 
   const handleCategorySelect = (cat) => {
-    // If it's a custom category and user is not Pro, show Pro modal
-    if (isCustomCategory(cat) && !settings.isProUser) {
+    // If it's a custom category and user is not Pro, show Pro modal - check entitlement
+    if (isCustomCategory(cat) && !isPro) {
       setProModalLimitType("customCategory");
       setProModalVisible(true);
       return;
@@ -93,7 +97,8 @@ export default function AddBlockModal({
   };
 
   const handleAddCategory = () => {
-    if (!settings.isProUser) {
+    // Custom categories are Pro-only - check entitlement
+    if (!isPro) {
       setProModalLimitType("customCategory");
       setProModalVisible(true);
       return;
@@ -178,8 +183,8 @@ export default function AddBlockModal({
 
     // If save to library is checked, check activity limit for free users
     if (saveToLibrary) {
-      // Check activity limit (20 max for free users)
-      if (!settings.isProUser && activities.length >= 20) {
+      // Check activity limit (20 max for free users) - check entitlement
+      if (!isPro && activities.length >= 20) {
         setProModalLimitType("activities");
         setProModalVisible(true);
         return;
@@ -455,7 +460,7 @@ export default function AddBlockModal({
               <View style={styles.categoryContainer}>
                 {allCategories.map((cat) => {
                   const isCustom = isCustomCategory(cat);
-                  const isLocked = isCustom && !settings.isProUser;
+                  const isLocked = isCustom && !isPro;
                   return (
                     <TouchableOpacity
                       key={cat}
@@ -482,7 +487,7 @@ export default function AddBlockModal({
                   );
                 })}
               </View>
-              {settings.isProUser && (
+              {isPro && (
                 <TouchableOpacity
                   style={styles.addCategoryButton}
                   onPress={handleAddCategory}
@@ -492,7 +497,7 @@ export default function AddBlockModal({
                   </Text>
                 </TouchableOpacity>
               )}
-              {!settings.isProUser && (
+              {!isPro && (
                 <TouchableOpacity
                   style={[
                     styles.addCategoryButton,

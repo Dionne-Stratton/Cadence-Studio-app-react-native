@@ -9,6 +9,7 @@ import {
   BUILT_IN_CATEGORIES,
 } from "../types";
 import useStore from "../store";
+import { checkProEntitlement } from "./subscriptionService";
 
 /**
  * Session sharing service for export/import
@@ -20,9 +21,9 @@ export const sessionSharingService = {
    */
   async exportSession(session) {
     try {
-      // Check if user is Pro (export is Pro-only)
-      const settings = useStore.getState().settings;
-      if (!settings.isProUser) {
+      // Check if user is Pro (export is Pro-only) - check entitlement
+      const isPro = await checkProEntitlement();
+      if (!isPro) {
         Alert.alert(
           "Export Sessions (Pro)",
           "Exporting sessions is a Pro feature. Upgrade to share your sessions with others.",
@@ -235,7 +236,8 @@ export const sessionSharingService = {
                     const state = useStore.getState();
                     const settings = state.settings || {};
                     const updateSettings = state.updateSettings;
-                    const isProUser = settings.isProUser || false;
+                    // Check Pro entitlement for import handling
+                    const isPro = await checkProEntitlement();
                     const customCategories = settings.customCategories || [];
 
                     const processedItems = session.items.map((item) => {
@@ -253,8 +255,8 @@ export const sessionSharingService = {
                           processedItem.category = category;
                         } else {
                           // Custom category
-                          if (isProUser) {
-                            // Pro: auto-add to custom categories
+                          if (isPro) {
+                            // Pro: auto-add to custom categories - check entitlement
                             if (!customCategories.includes(category)) {
                               updateSettings({
                                 customCategories: [
