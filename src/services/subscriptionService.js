@@ -2,7 +2,7 @@ import Purchases from 'react-native-purchases';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
-// Read API key from environment variable
+// Read RevenueCat API key from environment variables / Expo config
 // For Expo, we'll use Constants.expoConfig.extra or process.env
 const getApiKey = () => {
   // Try to get from Constants first (if set in app.config.js)
@@ -11,13 +11,18 @@ const getApiKey = () => {
   }
   
   // Fallback to process.env (works with dotenv in Expo)
-  const envKey = process.env.REVENUECAT_API_TEST_KEY || process.env.REVENUECAT_API_KEY;
+  // Prefer Android-specific key when set, otherwise use main production key
+  const envKey =
+    process.env.REVENUECAT_API_ANDROID_KEY ||
+    process.env.REVENUECAT_API_KEY;
   if (envKey) {
     return envKey;
   }
   
   // If neither works, throw an error
-  throw new Error('RevenueCat API key not found. Please set REVENUECAT_API_TEST_KEY in .env file.');
+  throw new Error(
+    'RevenueCat API key not found. Please set REVENUECAT_API_ANDROID_KEY or REVENUECAT_API_KEY in your environment.'
+  );
 };
 
 // Product identifiers - these must match what you configure in RevenueCat
@@ -45,9 +50,11 @@ export const initializeRevenueCat = async () => {
     const apiKey = getApiKey();
     await Purchases.configure({ apiKey });
     isInitialized = true;
-    console.log('RevenueCat initialized successfully');
+    console.log('✅ RevenueCat initialized successfully');
+    console.log('📱 Entitlement ID:', ENTITLEMENT_ID);
+    console.log('🛍️  Product IDs:', Object.values(PRODUCT_IDS));
   } catch (error) {
-    console.error('Error initializing RevenueCat:', error);
+    console.error('❌ Error initializing RevenueCat:', error);
     throw error;
   }
 };
@@ -59,9 +66,11 @@ export const initializeRevenueCat = async () => {
 export const checkProEntitlement = async () => {
   try {
     const customerInfo = await Purchases.getCustomerInfo();
-    return customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+    const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+    console.log('🔍 Pro entitlement check:', isPro ? '✅ Active' : '❌ Not active');
+    return isPro;
   } catch (error) {
-    console.error('Error checking Pro entitlement:', error);
+    console.error('❌ Error checking Pro entitlement:', error);
     // Return false on error to be safe
     return false;
   }
@@ -78,15 +87,16 @@ export const getProducts = async () => {
     const currentOffering = offerings.current;
     
     if (!currentOffering) {
-      console.warn('No current offering available');
+      console.warn('⚠️  No current offering available - create a default offering in RevenueCat dashboard');
       return [];
     }
 
     // Get available packages
     const packages = currentOffering.availablePackages;
+    console.log(`📦 Found ${packages.length} products in offering`);
     
     // Map packages to a simpler format
-    return packages.map((pkg) => ({
+    const products = packages.map((pkg) => ({
       identifier: pkg.identifier,
       product: pkg.product,
       productIdentifier: pkg.product.identifier,
@@ -94,8 +104,14 @@ export const getProducts = async () => {
       title: pkg.product.title,
       description: pkg.product.description,
     }));
+    
+    products.forEach(p => {
+      console.log(`  - ${p.productIdentifier}: ${p.price}`);
+    });
+    
+    return products;
   } catch (error) {
-    console.error('Error fetching products:', error);
+    console.error('❌ Error fetching products:', error);
     return [];
   }
 };

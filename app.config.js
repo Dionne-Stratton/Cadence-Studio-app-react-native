@@ -38,8 +38,10 @@ module.exports = {
       eas: {
         projectId: "a2ee7232-df82-4ed5-8766-e74ac562bd77"
       },
-      // Expose RevenueCat API key from .env
-      revenueCatApiKey: process.env.REVENUECAT_API_TEST_KEY || process.env.REVENUECAT_API_KEY,
+      // Expose RevenueCat API key from .env (prefer Android key when set, otherwise use main key)
+      revenueCatApiKey:
+        process.env.REVENUECAT_API_ANDROID_KEY ||
+        process.env.REVENUECAT_API_KEY,
     }
   }
 };
