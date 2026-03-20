@@ -256,7 +256,7 @@ export default function GoProScreen({ navigation }) {
                   <Text style={styles.pricingTitle}>Monthly</Text>
                 </View>
                 <Text style={styles.pricingPrice}>
-                  {getProductPrice("monthly") || "$2.99"}
+                  {getProductPrice("monthly") || "$4.99"}
                 </Text>
                 <Text style={styles.pricingPeriod}>per month</Text>
               </TouchableOpacity>

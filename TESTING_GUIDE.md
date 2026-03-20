@@ -92,7 +92,7 @@ eas build --profile development --platform android
 - Three pricing options visible
 - Loading spinner while fetching products
 - Real prices from App Store/Play Store (if configured)
-- Or fallback prices: $2.99/$24.99/$54.99
+- Or fallback prices: $4.99/$24.99/$54.99
 
 ### 5. Test Purchase Flow (Sandbox Testing)
 

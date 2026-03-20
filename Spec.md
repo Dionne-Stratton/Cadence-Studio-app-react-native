@@ -762,7 +762,7 @@ These do not need implementation now — this section simply future-proofs Pro.
 
 Subscription Options
 
-$2.99 / month
+$4.99 / month
 
 $29.99 / year
 (approx. 17% discount vs monthly; recommended default)

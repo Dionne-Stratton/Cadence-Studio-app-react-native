@@ -112,7 +112,7 @@ export default function ProUpgradeModal({
 
             {/* Pricing */}
             <View style={styles.pricingSection}>
-              <Text style={styles.pricingTitle}>Starting at $2.99/month</Text>
+              <Text style={styles.pricingTitle}>Starting at $4.99/month</Text>
               <Text style={styles.pricingSubtitle}>
                 or $29.99/year (save 16%)
               </Text>

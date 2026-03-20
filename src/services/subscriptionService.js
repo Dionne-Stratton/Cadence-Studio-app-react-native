@@ -27,13 +27,13 @@ const getApiKey = () => {
 
 // Product identifiers - these must match what you configure in RevenueCat
 export const PRODUCT_IDS = {
-  MONTHLY: 'monthly',
-  YEARLY: 'yearly',
-  LIFETIME: 'lifetime',
+  MONTHLY: 'pro_monthly',
+  YEARLY: 'pro_yearly',
+  LIFETIME: 'pro_lifetime',
 };
 
 // Entitlement identifier - this must match what you configure in RevenueCat
-export const ENTITLEMENT_ID = 'Cadence Studio Pro';
+export const ENTITLEMENT_ID = 'pro';
 
 let isInitialized = false;
 
