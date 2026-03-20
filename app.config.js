@@ -8,7 +8,7 @@ try {
 module.exports = {
   expo: {
     name: "Cadence Studio",
-    slug: "cadence-studio",
+    slug: "timer-app-react-native",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/icon.png",
@@ -19,13 +19,13 @@ module.exports = {
     },
     ios: {
       supportsTablet: true,
-      bundleIdentifier: "com.cadencestudio.app",
+      bundleIdentifier: "com.timerapp.reactnative",
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false
       }
     },
     android: {
-      package: "com.cadencestudio.app",
+      package: "com.timerapp.reactnative",
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff"

@@ -27,8 +27,8 @@ const getApiKey = () => {
 
 // Product identifiers - these must match what you configure in RevenueCat
 export const PRODUCT_IDS = {
-  MONTHLY: 'pro_monthly',
-  YEARLY: 'pro_yearly',
+  MONTHLY: 'pro:monthly',
+  YEARLY: 'pro:yearly',
   LIFETIME: 'pro_lifetime',
 };
 
