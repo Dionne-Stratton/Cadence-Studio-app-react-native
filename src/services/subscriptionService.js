@@ -5,24 +5,23 @@ import Constants from 'expo-constants';
 // Read RevenueCat API key from environment variables / Expo config
 // For Expo, we'll use Constants.expoConfig.extra or process.env
 const getApiKey = () => {
-  // Try to get from Constants first (if set in app.config.js)
-  if (Constants.expoConfig?.extra?.revenueCatApiKey) {
-    return Constants.expoConfig.extra.revenueCatApiKey;
+  const iosKey =
+    Constants.expoConfig?.extra?.revenueCatApiKeyIOS ||
+    process.env.REVENUECAT_API_IOS_KEY;
+
+  const androidKey =
+    Constants.expoConfig?.extra?.revenueCatApiKeyAndroid ||
+    process.env.REVENUECAT_API_ANDROID_KEY;
+
+  if (Platform.OS === 'ios' && iosKey) {
+    return iosKey;
   }
-  
-  // Fallback to process.env (works with dotenv in Expo)
-  // Prefer Android-specific key when set, otherwise use main production key
-  const envKey =
-    process.env.REVENUECAT_API_ANDROID_KEY ||
-    process.env.REVENUECAT_API_KEY;
-  if (envKey) {
-    return envKey;
+
+  if (Platform.OS === 'android' && androidKey) {
+    return androidKey;
   }
-  
-  // If neither works, throw an error
-  throw new Error(
-    'RevenueCat API key not found. Please set REVENUECAT_API_ANDROID_KEY or REVENUECAT_API_KEY in your environment.'
-  );
+
+  throw new Error('RevenueCat API key not found for this platform');
 };
 
 // Product identifiers - these must match what you configure in RevenueCat
